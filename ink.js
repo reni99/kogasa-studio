@@ -45,8 +45,8 @@ window.Ink = (() => {
     };
   }
 
-  // Washi grain: speckles and short fibres, as a repeating pattern.
-  function paperPattern(ctx, seed) {
+  // Washi grain: speckles and short fibres on a 384px tile.
+  function paperTile(seed) {
     const size = 384;
     const out = document.createElement("canvas");
     out.width = size; out.height = size;
@@ -66,8 +66,12 @@ window.Ink = (() => {
       o.quadraticCurveTo(x + Math.cos(ang) * len * 0.5 + (rand() - 0.5) * 4, y + Math.sin(ang) * len * 0.5 + (rand() - 0.5) * 4, x + Math.cos(ang) * len, y + Math.sin(ang) * len);
       o.stroke();
     }
-    return ctx.createPattern(out, "repeat");
+    return out;
   }
 
-  return { mulberry32, smooth, noise1, fbm1, noise2, paperPattern };
+  function paperPattern(ctx, seed) {
+    return ctx.createPattern(paperTile(seed), "repeat");
+  }
+
+  return { mulberry32, smooth, noise1, fbm1, noise2, paperTile, paperPattern };
 })();

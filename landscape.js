@@ -1,15 +1,18 @@
-// Kogasa Studio — the header's ink-wash landscape, painted on a canvas.
+// Kogasa Studio — the header's ink-wash landscape.
 //
 // Mountains are rendered pixel by pixel the way sumi-e washes behave: ink pools along
 // the ridge and fades down into mist, broken up by brush texture. Pines are built from
-// hundreds of short needle strokes. Layers are baked once per size, then composited
-// every frame with scroll parallax, drifting mist, rain, and the walker under the red umbrella.
+// hundreds of short needle strokes.
+//
+// Each layer (far range, mist, middle range, mist, near hill) gets its own canvas, painted
+// once per size. The parallax is a CSS scroll-driven animation on each layer (see
+// styles.css), and the mist drifts by CSS animation, so nothing static is ever redrawn
+// and no script runs while scrolling. Only the rain and the walker are drawn every frame.
 
 (() => {
-  const canvas = document.querySelector(".landscape");
-  if (!canvas || !canvas.getContext) return;
-  const ctx = canvas.getContext("2d");
-  const hero = canvas.closest(".hero");
+  const scene = document.querySelector(".landscape");
+  if (!scene || !document.createElement("canvas").getContext) return;
+  const hero = scene.closest(".hero");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   const css = getComputedStyle(document.documentElement);
@@ -18,7 +21,7 @@
   const PAPER = [236, 235, 230];
   const SEED = 1729;
 
-  const { mulberry32, smooth, noise1, fbm1, noise2, paperPattern } = window.Ink;
+  const { mulberry32, smooth, noise1, fbm1, noise2, paperTile } = window.Ink;
 
   // ───────── scene description (fractions of width / height) ─────────
 
@@ -43,12 +46,44 @@
   LAYERS.forEach((layer, i) => { layer.ridge = makeRidge(layer, i * 97 + 11); });
   const near = LAYERS[2];
 
+  // The stack, back to front. Soft washes and mist don't need retina resolution;
+  // the near hill with the pines does.
+  const STACK = [
+    { key: "far",  parallax: 0.18, dpr: 1,   delay: 0 },
+    { key: "fog0", parallax: 0.14, dpr: 1,   delay: 0.2, fog: true },
+    { key: "mid",  parallax: 0.10, dpr: 1.5, delay: 0.35 },
+    { key: "fog1", parallax: 0.07, dpr: 1,   delay: 0.5, fog: true },
+    { key: "near", parallax: 0.04, dpr: 2,   delay: 0.7 },
+  ];
+  for (const item of STACK) {
+    item.wrap = document.createElement("div");
+    item.wrap.className = "landscape__layer" + (item.fog ? " landscape__layer--fog" : "");
+    item.wrap.style.transitionDelay = `${item.delay}s`;
+    item.wrap.style.setProperty("--p", item.parallax);
+    item.canvas = document.createElement("canvas");
+    item.wrap.appendChild(item.canvas);
+    scene.appendChild(item.wrap);
+  }
+  const stack = Object.fromEntries(STACK.map((item) => [item.key, item]));
+
+  // rain and walker ride on the near hill's layer, so the walker stays on its path while scrolling
+  const liveWrap = document.createElement("div");
+  liveWrap.className = "landscape__layer";
+  liveWrap.style.transitionDelay = "1.1s";
+  liveWrap.style.setProperty("--p", near.parallax);
+  const live = document.createElement("canvas");
+  live.className = "landscape__live";
+  liveWrap.appendChild(live);
+  scene.appendChild(liveWrap);
+  const ctx = live.getContext("2d");
+  let liveDpr = 1;
+
   // ───────── baking ─────────
 
   let W = 0, H = 0, DPR = 1;
-  let baked = null;
+  let calm = null;   // the area behind the header copy, where rain thins out
 
-  function bakeWash(layer) {
+  function bakeWash(layer, target) {
     const res = layer.res;
     const w = Math.max(1, Math.ceil(W * res)), h = Math.max(1, Math.ceil(H * res));
     const rand = mulberry32(SEED + layer.name.length * 31);
@@ -81,15 +116,14 @@
     small.width = w; small.height = h;
     small.getContext("2d").putImageData(img, 0, 0);
 
-    const out = document.createElement("canvas");
-    out.width = Math.ceil(W * DPR); out.height = Math.ceil(H * DPR);
-    const o = out.getContext("2d");
+    target.width = Math.ceil(W * DPR); target.height = Math.ceil(H * DPR);
+    const o = target.getContext("2d");
     o.imageSmoothingQuality = "high";
     o.filter = `blur(${layer.blur * DPR}px)`;
-    o.drawImage(small, 0, 0, out.width, out.height);
+    o.drawImage(small, 0, 0, target.width, target.height);
     o.filter = "none";
     o.setTransform(DPR, 0, 0, DPR, 0, 0);
-    return { canvas: out, ctx: o };
+    return o;
   }
 
   function dryBrushRidge(o, layer, width, alpha, seed) {
@@ -207,7 +241,7 @@
     foliage(o, top.x, top.y + 4 * scale, height * 0.14, height * 0.05, rand, scale);
   }
 
-  function bakeFog(center, thickness, seed) {
+  function bakeFog(center, thickness, seed, target) {
     const res = 0.25;
     const fw = Math.ceil(W * 1.4 * res), fh = Math.ceil(H * res);
     const rand = mulberry32(seed);
@@ -228,38 +262,51 @@
     const small = document.createElement("canvas");
     small.width = fw; small.height = fh;
     small.getContext("2d").putImageData(img, 0, 0);
-    const out = document.createElement("canvas");
-    out.width = Math.ceil(W * 1.4 * DPR); out.height = Math.ceil(H * DPR);
-    const o = out.getContext("2d");
+    target.width = Math.ceil(W * 1.4 * DPR); target.height = Math.ceil(H * DPR);
+    const o = target.getContext("2d");
     o.filter = `blur(${10 * DPR}px)`;
-    o.drawImage(small, 0, 0, out.width, out.height);
-    return out;
+    o.drawImage(small, 0, 0, target.width, target.height);
   }
 
   function bake() {
-    const rect = canvas.getBoundingClientRect();
+    const rect = scene.getBoundingClientRect();
     W = Math.max(1, Math.round(rect.width));
     H = Math.max(1, Math.round(rect.height));
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(W * DPR);
-    canvas.height = Math.round(H * DPR);
+    const screenDpr = window.devicePixelRatio || 1;
+    const dprFor = (item) => Math.min(screenDpr, item.dpr);
 
-    const layers = LAYERS.map((layer) => ({ layer, ...bakeWash(layer) }));
-    const [, mid, nr] = layers;
-    dryBrushRidge(mid.ctx, LAYERS[1], 2.2, 0.55, SEED + 3);
-    ridgeTrees(mid.ctx, LAYERS[1], SEED + 4);
-    dryBrushRidge(nr.ctx, near, 3.4, 0.75, SEED + 6);
+    DPR = dprFor(stack.far);
+    bakeWash(LAYERS[0], stack.far.canvas);
 
+    DPR = dprFor(stack.mid);
+    const mid = bakeWash(LAYERS[1], stack.mid.canvas);
+    dryBrushRidge(mid, LAYERS[1], 2.2, 0.55, SEED + 3);
+    ridgeTrees(mid, LAYERS[1], SEED + 4);
+
+    DPR = dprFor(stack.near);
+    const nr = bakeWash(near, stack.near.canvas);
+    dryBrushRidge(nr, near, 3.4, 0.75, SEED + 6);
     const pineScale = Math.min(H / 780, W / 900);
     const u1 = 0.84, u2 = 0.915;
-    pine(nr.ctx, W * u1, near.ridge(u1) * H + 6, 300 * pineScale, -0.18, SEED + 8);
-    pine(nr.ctx, W * u2, near.ridge(u2) * H + 6, 190 * pineScale, 0.22, SEED + 9);
+    pine(nr, W * u1, near.ridge(u1) * H + 6, 300 * pineScale, -0.18, SEED + 8);
+    pine(nr, W * u2, near.ridge(u2) * H + 6, 190 * pineScale, 0.22, SEED + 9);
 
-    baked = {
-      layers,
-      fogs: [bakeFog(0.62, 0.07, SEED + 12), bakeFog(0.78, 0.06, SEED + 13)],
-      paper: paperPattern(ctx, SEED + 5),
-    };
+    DPR = dprFor(stack.fog0);
+    bakeFog(0.62, 0.07, SEED + 12, stack.fog0.canvas);
+    bakeFog(0.78, 0.06, SEED + 13, stack.fog1.canvas);
+
+    liveDpr = Math.min(screenDpr, 2);
+    live.width = Math.round(W * liveDpr);
+    live.height = Math.round(H * liveDpr);
+
+    const copy = document.querySelector(".hero__copy");
+    const quiet = copy ? copy.getBoundingClientRect() : null;
+    const pad = 70;
+    calm = quiet ? {
+      left: quiet.left - rect.left - pad, right: quiet.right - rect.left + pad,
+      top: quiet.top - rect.top - pad, bottom: quiet.bottom - rect.top + pad,
+    } : null;
+
     makeRain();
   }
 
@@ -276,32 +323,101 @@
   }
 
   // ───────── walker ─────────
+  //
+  // A small creature in silhouette, facing the way it walks: hunched back with a little
+  // hump, head carried low and forward, big white eyes. It shuffles like an old person,
+  // short alternating steps with a walking stick, under the red umbrella.
+  // Local units, origin on the ground between its feet, +x is forward, -y is up.
 
-  function drawWalker(x, y, s, alpha, bob) {
+  const SILHOUETTE = "#141413";
+
+  function drawWalker(x, y, s, alpha, t) {
+    const phase = t * 2.2;                       // one step every ~1.4 s
+    const stride = Math.sin(phase);              // -1 … 1
+    const bob = -Math.abs(Math.sin(phase)) * 0.7;
+    const sway = Math.sin(phase) * 0.025;
+    const blink = t > 0 && (t % 4.3) < 0.13 ? 0.12 : 1;
+
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(x, y + bob);
+    ctx.translate(x, y);
     ctx.scale(s, s);
-    // robe
-    ctx.fillStyle = `rgba(${INK.join(",")},0.85)`;
+    ctx.rotate(sway);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.fillStyle = SILHOUETTE;
+    ctx.strokeStyle = SILHOUETTE;
+
+    // walking stick, planted ahead, swinging with the steps
+    const caneTop = { x: 11.5, y: -9.5 + bob };
+    const caneTip = { x: 15.5 + stride * 1.6, y: 0 };
+    ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.moveTo(caneTop.x, caneTop.y - 1.2); ctx.lineTo(caneTip.x, caneTip.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(caneTop.x - 2, caneTop.y - 1.6); ctx.quadraticCurveTo(caneTop.x, caneTop.y - 3, caneTop.x + 0.3, caneTop.y - 1); ctx.stroke();
+
+    // legs: short shuffling steps
+    const leg = (dir, width) => {
+      const footX = dir * 2.6 + (dir > 0 ? stride : -stride) * 1.8;
+      const lift = Math.max(0, dir > 0 ? stride : -stride) * 0.8;
+      ctx.lineWidth = width;
+      ctx.beginPath(); ctx.moveTo(dir * 1.2, -5 + bob); ctx.lineTo(footX, -lift); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(footX + 0.9, -lift - 0.3, 2.1, 1, 0, 0, Math.PI * 2); ctx.fill();
+    };
+    leg(-1, 2.6);
+
+    // body and head: one hunched silhouette
+    ctx.save();
+    ctx.translate(0, bob);
     ctx.beginPath();
-    ctx.moveTo(-3, -5); ctx.bezierCurveTo(-5, 3, -6.5, 11, -6.5, 17);
-    ctx.lineTo(5.5, 17); ctx.bezierCurveTo(5, 11, 4, 3, 2.5, -5); ctx.closePath(); ctx.fill();
-    // legs, a hint of stride
-    ctx.strokeStyle = `rgba(${INK.join(",")},0.7)`; ctx.lineWidth = 1.2; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(-2, 17); ctx.lineTo(-2.5 - bob * 0.8, 20); ctx.moveTo(2, 17); ctx.lineTo(2.5 + bob * 0.8, 20); ctx.stroke();
-    // shaft
-    ctx.strokeStyle = `rgba(${INK.join(",")},0.9)`; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, -11); ctx.lineTo(0.6, 3); ctx.stroke();
-    // canopy: red wash with a darker rim, like a seal-colour brush stroke
+    ctx.moveTo(-8.5, -4.5);
+    ctx.bezierCurveTo(-11, -11, -10.5, -18.5, -6, -21.5);    // back rising to the hump
+    ctx.bezierCurveTo(-2.5, -24, 2.5, -22, 5, -18);          // over the hump, shoulders falling forward
+    ctx.bezierCurveTo(6.5, -15.5, 7, -11, 5.5, -8);           // chest
+    ctx.bezierCurveTo(4, -5, 0, -3.8, -3, -3.8);              // belly
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, -14.8, 6.2, 5.6, -0.15, 0, Math.PI * 2); ctx.fill();   // head, low and forward
+    ctx.beginPath(); ctx.ellipse(5.2, -19.8, 1.6, 2.4, -0.5, 0, Math.PI * 2); ctx.fill();  // ear
+    // arm reaching forward to the stick
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.moveTo(3, -13.5); ctx.quadraticCurveTo(8, -9.5, caneTop.x, caneTop.y - bob); ctx.stroke();
+    // arm holding the umbrella
+    ctx.beginPath(); ctx.moveTo(1, -16); ctx.quadraticCurveTo(4, -21, 3.2, -24); ctx.stroke();
+
+    // big white eyes, looking ahead
+    const eye = (ex, ey, rx, ry) => {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry * blink, 0, 0, Math.PI * 2); ctx.fill();
+      if (blink === 1) {
+        ctx.fillStyle = SILHOUETTE;
+        ctx.beginPath(); ctx.arc(ex + rx * 0.35, ey + ry * 0.15, rx * 0.42, 0, Math.PI * 2); ctx.fill();
+      }
+    };
+    eye(7.4, -15.6, 1.9, 2.5);   // far eye, a little smaller
+    eye(11.1, -15.3, 2.3, 2.9);  // near eye
+    ctx.restore();
+
+    leg(1, 2.6);
+
+    // umbrella: shaft from the raised hand, red canopy above the hump
+    ctx.save();
+    ctx.translate(0, bob);
+    ctx.strokeStyle = SILHOUETTE;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(3.2, -23.5); ctx.lineTo(1.2, -40.5); ctx.stroke();
+    ctx.translate(1, -31);
     ctx.fillStyle = SEAL;
     ctx.beginPath();
-    ctx.moveTo(-17, -8); ctx.bezierCurveTo(-13, -22, 13, -22, 17, -8);
-    ctx.bezierCurveTo(8, -11.5, -8, -11.5, -17, -8); ctx.closePath(); ctx.fill();
+    ctx.moveTo(-18, -8); ctx.bezierCurveTo(-14, -22.5, 14, -22.5, 18, -8);
+    ctx.bezierCurveTo(8.5, -11.5, -8.5, -11.5, -18, -8); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = "rgba(90,20,16,0.55)"; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(-17, -8); ctx.bezierCurveTo(-8, -11.5, 8, -11.5, 17, -8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-18, -8); ctx.bezierCurveTo(-8.5, -11.5, 8.5, -11.5, 18, -8); ctx.stroke();
     ctx.strokeStyle = "rgba(90,20,16,0.35)";
-    for (const k of [-9, -3, 3, 9]) { ctx.beginPath(); ctx.moveTo(0, -18.5); ctx.lineTo(k, -10.4); ctx.stroke(); }
+    for (const k of [-10, -3.5, 3.5, 10]) { ctx.beginPath(); ctx.moveTo(0, -19); ctx.lineTo(k, -10.6); ctx.stroke(); }
+    ctx.fillStyle = SILHOUETTE;
+    ctx.fillRect(-0.6, -21.5, 1.2, 2.6);
+    ctx.restore();
+
     ctx.restore();
   }
 
@@ -313,66 +429,51 @@
   let running = false;
   let raf = 0;
 
-  function scrollOffset() {
-    return Math.min(Math.max(window.scrollY, 0), hero.offsetHeight);
-  }
-
   function frame(now) {
     const t = (now - start) / 1000;
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     const still = reduceMotion.matches;
-    const scroll = still ? 0 : scrollOffset();
-
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = `rgb(${PAPER.join(",")})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const appear = (delay) => (still ? 1 : smooth(0, 1, (t - delay) / 1.6));
-    const drift = (speed, phase) => (still ? 0 : Math.sin(t * speed + phase) * W * 0.12);
-
-    const [far, mid, nr] = baked.layers;
-    const draw = (img, offsetY, alpha, offsetX = 0) => {
-      if (alpha <= 0) return;
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(img, offsetX * DPR, offsetY * DPR);
-      ctx.globalAlpha = 1;
-    };
-
-    draw(far.canvas, scroll * far.layer.parallax, appear(far.layer.delay));
-    draw(baked.fogs[0], scroll * 0.14, appear(0.2), -W * 0.2 + drift(0.035, 0));
-    draw(mid.canvas, scroll * mid.layer.parallax, appear(mid.layer.delay));
-    draw(baked.fogs[1], scroll * 0.07, appear(0.5), -W * 0.2 + drift(0.05, 2));
-    draw(nr.canvas, scroll * nr.layer.parallax, appear(nr.layer.delay));
-
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, live.width, live.height);
+    ctx.setTransform(liveDpr, 0, 0, liveDpr, 0, 0);
 
     // walker follows the near ridge
     const p = still ? 0.45 : (t % WALK_SECONDS) / WALK_SECONDS;
     const u = 0.5 + 0.3 * p;
     const fade = still ? 1 : smooth(0, 0.05, p) * (1 - smooth(0.95, 1, p));
-    const s = (H / 640) * 1.15;
+    const s = (H / 640) * 1.3;
     const wx = u * W;
-    const wy = near.ridge(u) * H + scroll * near.parallax - 19 * s;
-    const bob = still ? 0 : Math.abs(Math.sin(t * 2.6)) * -1.1 * s;
-    drawWalker(wx, wy, s, fade * appear(1.1), bob);
+    const wy = near.ridge(u) * H + 1;
+    drawWalker(wx, wy, s, fade, still ? 0 : t);
 
-    // rain at several depths
+    // rain at several depths, batched into a few paths by thickness and strength
     ctx.lineCap = "round";
+    const RAIN_WIDTHS = [0.7, 1.0, 1.3];
+    const rainPaths = new Map();
     for (const d of drops) {
       if (!still) {
         d.y += d.speed * dt;
         d.x -= d.speed * dt * 0.2;
         if (d.y - d.len > H) { d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * 0.2; }
       }
-      ctx.strokeStyle = `rgba(${INK.join(",")},${(0.04 + 0.11 * d.z).toFixed(3)})`;
-      ctx.lineWidth = 0.5 + 0.7 * d.z;
-      ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x + d.len * 0.2, d.y - d.len); ctx.stroke();
+      let rainAlpha = 0.04 + 0.11 * d.z;
+      if (calm) {
+        const inside = Math.min(d.x - calm.left, calm.right - d.x, d.y - calm.top, calm.bottom - d.y);
+        rainAlpha *= 1 - 0.75 * smooth(0, 60, inside);
+      }
+      const level = Math.round(rainAlpha / 0.015);
+      if (level === 0) continue;
+      const key = (d.z < 0.5 ? 0 : d.z < 0.75 ? 1 : 2) * 100 + level;
+      let path = rainPaths.get(key);
+      if (!path) { path = new Path2D(); rainPaths.set(key, path); }
+      path.moveTo(d.x, d.y); path.lineTo(d.x + d.len * 0.2, d.y - d.len);
     }
-
-    // washi grain over everything
-    ctx.fillStyle = baked.paper;
-    ctx.fillRect(0, 0, W, H);
+    for (const [key, path] of rainPaths) {
+      ctx.lineWidth = RAIN_WIDTHS[Math.floor(key / 100)];
+      ctx.strokeStyle = `rgba(${INK.join(",")},${((key % 100) * 0.015).toFixed(3)})`;
+      ctx.stroke(path);
+    }
 
     if (running) raf = requestAnimationFrame(frame);
   }
@@ -385,16 +486,20 @@
   }
   function pause() { running = false; cancelAnimationFrame(raf); }
 
+  // washi grain sits over the painting as a static layer, so it is never redrawn
+  const grain = hero.querySelector(".hero__grain");
+  if (grain) grain.style.backgroundImage = `url(${paperTile(SEED + 5).toDataURL()})`;
+
   bake();
   frame(performance.now());
-  canvas.classList.add("is-ready");
+  scene.classList.add("is-ready");
   play();
 
   let resizeTimer = 0;
   new ResizeObserver(() => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { bake(); frame(performance.now()); }, 120);
-  }).observe(canvas);
+  }).observe(scene);
 
   new IntersectionObserver(([entry]) => (entry.isIntersecting ? play() : pause())).observe(hero);
   document.addEventListener("visibilitychange", () => (document.hidden ? pause() : play()));

@@ -21,10 +21,28 @@
   <script src="main.js" defer></script>
 </head>
 <body>
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="hanko" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.55" result="speck"/>
+      <feComposite in="SourceGraphic" in2="speck" operator="in" result="worn"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" result="blotch"/>
+      <feColorMatrix in="blotch" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.3 0.2" result="density"/>
+      <feComposite in="worn" in2="density" operator="in" result="inked"/>
+      <feTurbulence type="turbulence" baseFrequency="0.06" numOctaves="2" seed="7" result="warp"/>
+      <feDisplacementMap in="inked" in2="warp" scale="3.5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="bleed" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="5" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="16" xChannelSelector="R" yChannelSelector="G" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1.6"/>
+    </filter>
+  </svg>
   <a class="skip" href="#apps">Skip to the apps</a>
 
   <section class="hero" id="top" aria-labelledby="hero-title">
-    <canvas class="landscape" aria-hidden="true"></canvas>
+    <div class="landscape" aria-hidden="true"></div>
+    <div class="hero__grain" aria-hidden="true"></div>
     <div class="hero__veil" aria-hidden="true"></div>
     <div class="hero__fade" aria-hidden="true"></div>
 
@@ -36,7 +54,10 @@
 
       <div class="hero__content">
         <header class="topbar rise d0">
-          <a class="wordmark" href="#top"><span class="seal seal--sm" aria-hidden="true">小傘</span>Kogasa Studio</a>
+          <div class="brand">
+            <a class="wordmark" href="#top"><span class="seal seal--sm" aria-hidden="true">小傘</span>Kogasa Studio</a>
+            <p class="brand__tagline">Independent app studio · Switzerland</p>
+          </div>
           <nav class="nav" aria-label="Main">
             <a href="#apps">Apps</a>
             <a href="#studio">Studio</a>
@@ -44,9 +65,8 @@
           </nav>
         </header>
         <div class="hero__copy">
-          <p class="eyebrow rise d2">Independent app studio · Switzerland</p>
           <h1 id="hero-title" class="rise d3">A small umbrella in a big rain.</h1>
-          <p class="lede rise d4">The App Store is pouring with grey, copy-paste apps. Kogasa (小傘) is a small umbrella against it: a few apps for iPhone and Mac, made by hand.</p>
+          <p class="lede rise d4">The App Store is pouring with grey, copy-paste apps. Kogasa (小傘) is a small umbrella against it: a few apps for iPhone and Mac, built with AI and finished by human hands.</p>
           <a class="button rise d5" href="#apps">Find the colour <span aria-hidden="true">↓</span></a>
         </div>
       </div>
@@ -60,7 +80,7 @@
       <div class="manifesto">
         <p class="eyebrow">After the rain · 雨上がり</p>
         <h2 id="colour-title">Less slop.<br>More colour.</h2>
-        <p>The App Store is flooded with clones, ad-stuffed templates and apps nobody really made. We would rather paint. Every app we ship is made by hand, has its own colour, and earns its own seal.</p>
+        <p>The App Store is flooded with clones, ad-stuffed templates and apps nobody cared about. We build with AI too, and spend the time it saves on the part that matters: we draw our own visuals, sweat the details, and give every app its own colour and its own seal.</p>
       </div>
 
       <div class="book">
@@ -69,14 +89,20 @@
           <p class="eyebrow">御朱印帳 · goshuinchō</p>
           <h2 id="book-title">The stamp book</h2>
         </div>
-        <p class="section-head__text">At Japanese temples, visitors collect a page of brush writing and a red seal. We keep a book like that for our apps. Each one earns a page when it ships.</p>
+        <p class="section-head__text">At Japanese temples, visitors collect a page of brush writing and a red seal. We keep a book like that for our apps. Each app earns a page, its own seal and the studio's mark when it ships.</p>
       </div>
 
-      <div class="pages">
-        <figure class="entry">
-          <div class="page">
+      <div class="sheets" role="list">
+        <figure class="sheet" role="listitem" style="--hue: #C8463A; --tilt: -1.4deg">
+          <div class="page" aria-hidden="true">
+            <svg class="page__wash" viewBox="0 0 110 160" preserveAspectRatio="none">
+              <g filter="url(#bleed)">
+                <ellipse cx="52" cy="84" rx="38" ry="42"/>
+                <ellipse cx="78" cy="30" rx="20" ry="16"/>
+              </g>
+            </svg>
             <span class="page__title">小傘工房</span>
-            <span class="stamp" style="--r: -3deg"><span class="stamp__vertical">小傘</span></span>
+            <span class="stamp" style="--r: -3deg"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)"><rect x="3" y="3" width="94" height="94" rx="5" fill="currentColor"/><text x="50" y="30" text-anchor="middle" dominant-baseline="central" font-size="42" fill="#F6F5F0">小</text><text x="50" y="72" text-anchor="middle" dominant-baseline="central" font-size="42" fill="#F6F5F0">傘</text></g></svg></span>
             <span class="page__date page__date--bottom">令和八年</span>
           </div>
           <figcaption>
@@ -85,22 +111,56 @@
           </figcaption>
         </figure>
 
-        <figure class="entry">
-          <div class="page">
+        <figure class="sheet" role="listitem" style="--hue: #C9A24B; --tilt: 0.9deg">
+          <div class="page" aria-hidden="true">
+            <svg class="page__wash" viewBox="0 0 110 160" preserveAspectRatio="none">
+              <g filter="url(#bleed)">
+                <ellipse cx="62" cy="70" rx="40" ry="46"/>
+                <ellipse cx="40" cy="118" rx="30" ry="24"/>
+              </g>
+            </svg>
+            <svg class="page__leafgold" viewBox="0 0 110 160" preserveAspectRatio="none">
+                <polygon points="37.1,120.2 36.4,120.5 36.2,120.0 36.8,119.7"/>
+                <polygon points="33.7,100.5 33.1,100.8 32.5,100.3 32.9,99.9 33.5,99.9"/>
+                <polygon points="89.4,12.8 88.9,13.3 88.6,12.7 88.4,12.2 89.2,12.3"/>
+                <polygon points="99.6,65.3 98.1,66.4 97.1,66.0 95.8,65.0 96.7,63.0 98.0,63.5 99.3,63.6"/>
+                <polygon points="66.8,10.7 63.2,12.4 60.7,11.4 60.3,7.3 64.7,6.9"/>
+                <polygon points="28.0,116.0 24.5,117.3 22.6,114.5 25.1,113.0"/>
+                <polygon points="37.8,43.7 37.3,44.2 36.6,44.5 36.6,43.7 36.7,43.0 37.1,42.8 37.9,42.9"/>
+                <polygon points="48.4,75.8 48.0,76.2 47.3,76.2 47.0,75.7 47.7,75.0 48.0,75.4"/>
+                <polygon points="100.2,47.6 99.8,47.8 99.3,47.6 99.4,47.1 100.1,47.0"/>
+                <polygon points="60.0,41.7 59.6,42.2 58.9,42.2 59.2,41.0 60.0,41.2"/>
+                <polygon points="101.5,88.7 100.5,89.7 99.4,88.9 99.8,87.8 101.2,87.0"/>
+                <polygon points="53.8,72.4 53.5,72.8 53.1,72.6 52.8,72.1 52.9,71.8 53.4,71.7 54.0,71.9"/>
+                <polygon points="46.3,30.7 45.4,31.3 44.0,31.0 44.0,29.5 44.3,28.7 45.8,29.1"/>
+                <polygon points="25.6,100.2 25.2,100.8 24.5,100.4 24.4,100.0 24.8,99.5 25.3,99.5"/>
+                <polygon points="64.9,20.8 63.7,21.4 63.1,19.7 64.5,19.7"/>
+                <polygon points="71.9,79.5 71.6,79.9 71.2,79.8 71.0,79.3 70.9,78.9 71.3,79.0 72.0,79.1"/>
+                <polygon points="20.4,23.9 19.8,24.2 19.3,24.2 19.4,23.7 19.6,23.2 20.2,23.3"/>
+                <polygon points="19.0,59.2 18.5,59.5 18.2,59.2 18.2,58.8 18.8,58.8"/>
+                <polygon points="64.0,14.2 61.9,14.5 60.7,12.5 62.6,11.7"/>
+                <polygon points="94.6,66.4 93.8,67.4 92.8,67.1 91.8,65.9 92.4,64.6 93.3,64.7 95.0,65.3"/>
+                <polygon points="91.0,29.3 90.0,29.6 88.7,29.6 88.7,28.4 89.7,27.2 90.5,27.6"/>
+                <polygon points="15.3,124.9 12.7,126.6 11.3,123.5 14.6,121.7"/>
+                <polygon points="24.2,126.1 23.8,126.4 23.6,126.1 23.4,125.8 23.7,125.4 24.2,125.6"/>
+                <polygon points="73.5,7.8 73.0,8.2 72.6,8.0 72.4,7.7 72.6,7.3 73.2,7.3"/>
+                <polygon points="58.8,30.9 58.3,31.5 57.7,31.4 57.3,30.7 57.5,30.2 58.0,30.0 58.7,30.2"/>
+                <polygon points="33.8,16.7 30.8,17.7 28.0,15.1 32.7,12.9"/>
+            </svg>
             <span class="page__title page__title--long">フォイルフォールド</span>
-            <span class="stamp stamp--single" style="--r: 4deg; --top: 46%; --stamp: var(--gold)">箔</span>
-            <img class="page__icon" src="assets/foilfold-icon.png" alt="FoilFold app icon" width="56" height="56">
+            <span class="stamp" style="--r: 4deg; --top: 44%; --stamp: var(--gold)"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)"><rect x="3" y="3" width="94" height="94" rx="5" fill="currentColor"/><text x="50" y="54" text-anchor="middle" dominant-baseline="central" font-size="68" fill="#F6F5F0">箔</text></g></svg></span>
+            <span class="stamp stamp--mark" style="--r: -9deg; --top: 82%; --left: 30%; --size: 42px; --delay: .35s"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)" fill="currentColor"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-size="30">小</text><text x="50" y="66" text-anchor="middle" dominant-baseline="central" font-size="30">傘</text></g></svg></span>
             <span class="page__date page__date--top">令和八年</span>
           </div>
           <figcaption>
-            <h3>FoilFold</h3>
+            <h3><img src="assets/foilfold-icon.png" alt="" width="28" height="28">FoilFold</h3>
             <p>The fastest offline-first way to track your Magic: The Gathering collection, on iPhone and Mac. Seal: 箔, gold foil.</p>
             <a href="https://foilfold.com">foilfold.com</a>
           </figcaption>
         </figure>
 
-        <figure class="entry entry--empty">
-          <div class="page page--blank">
+        <figure class="sheet sheet--empty" role="listitem" style="--tilt: -0.6deg">
+          <div class="page page--blank" aria-hidden="true">
             <span class="stamp-outline">未</span>
           </div>
           <figcaption>
@@ -114,23 +174,78 @@
     </section>
 
     <section id="studio" class="principles" aria-labelledby="studio-title">
-      <p class="eyebrow" id="studio-title">How we build</p>
-      <div class="principles__grid">
+      <div class="section-head">
         <div>
-          <p class="marker">骨 <span>hone · the ribs</span></p>
-          <h3>Native</h3>
-          <p>Written in Swift for Apple platforms, so every app feels at home on iPhone and Mac.</p>
+          <p class="eyebrow">心得 · kokoroe</p>
+          <h2 id="studio-title">How we work</h2>
         </div>
-        <div>
-          <p class="marker">紙 <span>kami · the oiled paper</span></p>
-          <h3>Offline first</h3>
-          <p>Like oiled paper keeping out the rain, your data stays on your device and in your iCloud.</p>
-        </div>
-        <div>
-          <p class="marker">印 <span>in · the seal</span></p>
-          <h3>A page per app</h3>
-          <p>Few apps, each one finished before it gets its seal, and kept up after.</p>
-        </div>
+        <p class="section-head__text">Kokoroe are the things a craftsman keeps in mind. Ours are eight, each named after a Japanese saying.</p>
+      </div>
+      <div class="tenets">
+        <article class="tenet" style="--hue: #34529A">
+          <p class="tenet__saying" lang="ja">適材適所</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">tekizai tekisho</span> · the right material in the right place</p>
+            <h3>Native, Apple only</h3>
+            <p>We build only for Apple platforms, in Swift and SwiftUI. Each app uses what the system already does well, from widgets to iCloud, instead of imitating it.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #B0476A">
+          <p class="tenet__saying" lang="ja">思いやり</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">omoiyari</span> · consideration for others</p>
+            <h3>Inclusive</h3>
+            <p>Every app supports VoiceOver, Dynamic Type, Reduce Motion and clear contrast from the first release. If someone cannot use it, it is not finished.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #7A5896">
+          <p class="tenet__saying" lang="ja">秘すれば花</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">hisureba hana</span> · what is kept hidden is the flower</p>
+            <h3>Privacy first</h3>
+            <p>No Google products, no analytics, no tracking and no ads in our apps. Your data stays on your device and in your own iCloud. We do not collect it, because we do not want it.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #B8322A">
+          <p class="tenet__saying" lang="ja">一期一会</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">ichigo ichie</span> · one time, one meeting</p>
+            <h3>Companions, not traps</h3>
+            <p>Every moment happens only once. Our apps help with a task and then let you go: no streaks to guilt you, no endless feeds, no notifications begging for attention.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #2E7A80">
+          <p class="tenet__saying tenet__saying--long" lang="ja">備えあれば憂いなし</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">sonae areba urei nashi</span> · be prepared and there is nothing to fear</p>
+            <h3>Offline first</h3>
+            <p>Our apps work without a connection. The network is for syncing and updates, never for the basics.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #57793F">
+          <p class="tenet__saying" lang="ja">足るを知る</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">taru o shiru</span> · know what is enough</p>
+            <h3>Only what matters</h3>
+            <p>We add what makes an app better and leave out the rest. No bloat, no dark patterns, no feature built just to fill a list.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #97691F">
+          <p class="tenet__saying" lang="ja">改善</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">kaizen</span> · change for the better</p>
+            <h3>Kept well</h3>
+            <p>Shipping is the start. We keep every app up to date with each new system release and keep improving it, a little at a time.</p>
+          </div>
+        </article>
+        <article class="tenet" style="--hue: #1B1B1A">
+          <p class="tenet__saying" lang="ja">画竜点睛</p>
+          <div class="tenet__body">
+            <p class="tenet__reading"><span lang="ja-Latn">garyō tensei</span> · painting in the dragon's eyes</p>
+            <h3>The human touch</h3>
+            <p>A painter's dragons came alive only when he added their eyes. AI helps us build the dragon; we paint the eyes ourselves, with our own drawings, careful words and the small details that make an app feel alive.</p>
+          </div>
+        </article>
       </div>
     </section>
 
