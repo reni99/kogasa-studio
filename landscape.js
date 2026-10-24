@@ -405,29 +405,52 @@
   let canopy = null;   // where the umbrella is this frame, so rain can splash off it
   let windSoft = 0.35; // the gust with a little inertia: trees, umbrella and walker ease into it
 
+  // Now and then a strong blow flips the umbrella inside out. The walker stops and holds on
+  // until it passes, then the umbrella snaps open again and the walk goes on.
+  const BLOW_SECONDS = 4.4;
+  let nextBlow = 5;                        // the first one comes after 5 s, so visitors see it
+  let blowStart = -1;
+  let walkClock = 0;                       // the walk's own time: it stands still during a blow
+  let brace = 0, fold = 0, foldVelocity = 0;
+
+  function blowAt(t) {
+    if (blowStart < 0 && t >= nextBlow) blowStart = t;
+    if (blowStart < 0) return 0;
+    const local = t - blowStart;
+    if (local > BLOW_SECONDS) {
+      blowStart = -1;
+      nextBlow = t + 35 + Math.random() * 35;
+      return 0;
+    }
+    return smooth(0, 0.5, local) * (1 - smooth(BLOW_SECONDS - 1.1, BLOW_SECONDS, local));
+  }
+
   // Wind: a slow, uneven gust between 0 (calm) and 1 (strong), blowing from right to left.
   function gustAt(t) {
     const g = 0.5 + 0.32 * Math.sin(t * 0.31) + 0.12 * Math.sin(t * 0.83 + 1.3) + 0.06 * Math.sin(t * 2.1 + 0.4);
     return Math.min(Math.max(g, 0), 1);
   }
 
-  function drawWalker(x, y, s, alpha, t, state, gust) {
-    const walking = !state.look;
+  function drawWalker(x, y, s, alpha, t, state, gust, brace = 0, fold = 0) {
+    const walking = !state.look && brace < 0.3;
     const phase = state.walkTime * 2.2;                     // one step every ~1.4 s while walking
     const stride = walking ? Math.sin(phase) : 0;
     const breath = Math.sin(t * 1.7) * 0.25;
     const bob = walking ? -Math.abs(Math.sin(phase)) * 0.85 : breath;
     const headBob = walking ? -Math.abs(Math.sin(phase - 0.6)) * 0.9 : breath * 1.2;
     const sway = Math.sin(t * 1.05) * (0.4 + gust);                         // slow, soft rhythm of the wind
-    const lean = (walking ? Math.sin(phase) * 0.025 : 0) + gust * 0.03 + sway * 0.01;   // leans into the wind
-    const up = state.look === "up" ? state.lookAmount : 0;
-    const viewer = state.look === "viewer" ? state.lookAmount : 0;
+    const shake = Math.sin(t * 23) * 0.35 * brace;                             // trembling while it holds on
+    const lean = (walking ? Math.sin(phase) * 0.025 : 0) + gust * 0.03 + sway * 0.01 + brace * 0.12;   // leans into the wind
+    const up = state.look === "up" ? state.lookAmount * (1 - brace) : 0;
+    const viewer = state.look === "viewer" ? state.lookAmount * (1 - brace) : 0;
     const blink = (t % 4.3) < 0.13 ? 0.12 : 1;
-    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2 - gust * 0.14 - Math.sin(t * 1.05 + 0.7) * (0.4 + gust) * 0.05;   // pushed back by gusts, swaying softly
+    const squint = 1 - brace * 0.6;
+    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2 - gust * 0.14 - Math.sin(t * 1.05 + 0.7) * (0.4 + gust) * 0.05
+      - brace * 0.32 + Math.sin(t * 17) * 0.06 * brace;   // pushed back by gusts, swaying softly; yanked back in a blow
 
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(x, y);
+    ctx.translate(x + shake * s, y);
     ctx.scale(s, s);
     ctx.rotate(lean);
     ctx.lineCap = "round";
@@ -444,7 +467,7 @@
 
     // legs: short shuffling steps
     const leg = (dir) => {
-      const footX = dir * 2.6 + (dir > 0 ? stride : -stride) * 1.8;
+      const footX = dir * (2.6 + brace * 1.4) + (dir > 0 ? stride : -stride) * 1.8;
       const lift = Math.max(0, dir > 0 ? stride : -stride) * 0.8;
       ctx.lineWidth = 2.6;
       ctx.beginPath(); ctx.moveTo(dir * 1.2, -5 + bob); ctx.lineTo(footX, -lift); ctx.stroke();
@@ -497,8 +520,8 @@
     const look = { x: 0.35 * (1 - viewer) - 0.25 * viewer, y: 0.15 - up * 0.9 + viewer * 0.1 };
     const eye = (ex, ey, rx, ry) => {
       ctx.fillStyle = "#FFFFFF";
-      ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry * blink, 0, 0, Math.PI * 2); ctx.fill();
-      if (blink === 1) {
+      ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry * blink * squint, 0, 0, Math.PI * 2); ctx.fill();
+      if (blink === 1 && squint > 0.5) {
         ctx.fillStyle = SILHOUETTE;
         ctx.beginPath(); ctx.arc(ex + rx * look.x, ey + ry * look.y, rx * 0.42, 0, Math.PI * 2); ctx.fill();
       }
@@ -517,16 +540,23 @@
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(3.3, -23.5); ctx.lineTo(1.2, -40.5); ctx.stroke();
     ctx.translate(1, -31);
+    // open, the canopy is a dome; blown inside out (fold → 1) it becomes a cup showing its darker underside
+    const f = fold;
+    const rimX = 18 - 4.5 * f, rimY = -8 - 17 * f;
+    const domeY = -22.5 + 12.5 * f, innerY = -11.5 - 9.5 * f;
+    const canopyPath = new Path2D();
+    canopyPath.moveTo(-rimX, rimY); canopyPath.bezierCurveTo(-rimX * 0.78, domeY, rimX * 0.78, domeY, rimX, rimY);
+    canopyPath.bezierCurveTo(rimX * 0.47, innerY, -rimX * 0.47, innerY, -rimX, rimY); canopyPath.closePath();
     ctx.fillStyle = SEAL;
-    ctx.beginPath();
-    ctx.moveTo(-18, -8); ctx.bezierCurveTo(-14, -22.5, 14, -22.5, 18, -8);
-    ctx.bezierCurveTo(8.5, -11.5, -8.5, -11.5, -18, -8); ctx.closePath(); ctx.fill();
+    ctx.fill(canopyPath);
+    if (f > 0.02) { ctx.fillStyle = `rgba(70,15,12,${(0.38 * Math.min(f, 1)).toFixed(3)})`; ctx.fill(canopyPath); }
     ctx.strokeStyle = "rgba(90,20,16,0.55)"; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.moveTo(-18, -8); ctx.bezierCurveTo(-8.5, -11.5, 8.5, -11.5, 18, -8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-rimX, rimY); ctx.bezierCurveTo(-rimX * 0.47, innerY, rimX * 0.47, innerY, rimX, rimY); ctx.stroke();
     ctx.strokeStyle = "rgba(90,20,16,0.35)";
-    for (const k of [-10, -3.5, 3.5, 10]) { ctx.beginPath(); ctx.moveTo(0, -19); ctx.lineTo(k, -10.6); ctx.stroke(); }
+    const tipY = -19 + 8 * f, ribY = -10.6 - 13 * f;
+    for (const k of [-10, -3.5, 3.5, 10]) { ctx.beginPath(); ctx.moveTo(0, tipY); ctx.lineTo(k * rimX / 18, ribY); ctx.stroke(); }
     ctx.fillStyle = SILHOUETTE;
-    ctx.fillRect(-0.6, -21.5, 1.2, 2.6);
+    ctx.fillRect(-0.6, -21.5 + 8 * f, 1.2, 2.6);
     ctx.restore();
 
     ctx.restore();
@@ -537,7 +567,8 @@
     const ox = 1 - 3.3, oy = -31 + 24;
     const rx = hx + ox * Math.cos(umbrellaTilt) - oy * Math.sin(umbrellaTilt);
     const ry = hy + ox * Math.sin(umbrellaTilt) + oy * Math.cos(umbrellaTilt);
-    canopy = { x: x + rx * s, y: y + ry * s, s, tilt, alpha };
+    // a flipped umbrella shelters nothing: rain falls straight through
+    canopy = { x: x + rx * s, y: y + ry * s, s, tilt, alpha: alpha * (1 - smooth(0.2, 0.5, fold)) };
   }
 
   // Rain meeting the canopy: returns "hit", "under" (sheltered, not drawn) or null.
@@ -675,8 +706,17 @@
     ctx.clearRect(0, 0, live.width, live.height);
     ctx.setTransform(liveDpr, 0, 0, liveDpr, 0, 0);
 
-    const gust = still ? 0.35 : gustAt(t);
-    if (!still) windSoft += (gust - windSoft) * Math.min(1, dt * 0.7);
+    const blow = still ? 0 : blowAt(t);
+    const gust = still ? 0.35 : Math.max(gustAt(t), blow * 1.3);
+    if (!still) {
+      windSoft += (gust - windSoft) * Math.min(1, dt * (0.7 + blow * 4));
+      brace += (blow - brace) * Math.min(1, dt * 5);
+      // the umbrella flips on a springy hinge: it pops open again with a little bounce
+      const target = blow > 0.45 || (fold > 0.5 && blow > 0.2) ? 1 : 0;
+      foldVelocity += ((target - fold) * 120 - foldVelocity * 11) * dt;
+      fold = Math.min(Math.max(fold + foldVelocity * dt, -0.15), 1.06);
+      walkClock += dt * (1 - brace);
+    }
 
     // the pines bend with the gust, from their base
     if (!still) {
@@ -688,14 +728,14 @@
     }
 
     // walker follows the near ridge
-    const state = still ? { progress: 0.45, walkTime: 0, look: null, lookAmount: 0 } : walkerState(t);
+    const state = still ? { progress: 0.45, walkTime: 0, look: null, lookAmount: 0 } : walkerState(walkClock);
     const p = state.progress;
     const u = 0.5 + 0.3 * p;
     const fade = still ? 1 : smooth(0, 0.05, p) * (1 - smooth(0.95, 1, p));
     const s = (H / 640) * 1.3;
     const wx = u * W;
     const wy = near.ridge(u) * H + 1;
-    drawWalker(wx, wy, s, fade, still ? 0 : t, state, still ? 0.35 : windSoft);
+    drawWalker(wx, wy, s, fade, still ? 0 : t, state, still ? 0.35 : windSoft, brace, Math.max(fold, 0));
 
     // rain at several depths, batched into a few paths by thickness and strength
     ctx.lineCap = "round";
