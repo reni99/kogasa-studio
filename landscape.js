@@ -324,31 +324,79 @@
 
   // ───────── walker ─────────
   //
-  // A small creature in silhouette, facing the way it walks: hunched back with a little
-  // hump, head carried low and forward, big white eyes. It shuffles like an old person,
-  // short alternating steps with a walking stick, under the red umbrella.
-  // Local units, origin on the ground between its feet, +x is forward, -y is up.
+  // A small old creature in silhouette: hunched back with a little hump, head carried low and
+  // forward, big white eyes. It shuffles along the hill leaning on a stick, under the red
+  // umbrella, and now and then stops to look up at the rain or glance at whoever is watching.
+  // Local units: origin on the ground between its feet, +x forward, -y up.
 
   const SILHOUETTE = "#141413";
 
-  function drawWalker(x, y, s, alpha, t) {
-    const phase = t * 2.2;                       // one step every ~1.4 s
-    const stride = Math.sin(phase);              // -1 … 1
-    const bob = -Math.abs(Math.sin(phase)) * 0.7;
-    const sway = Math.sin(phase) * 0.025;
-    const blink = t > 0 && (t % 4.3) < 0.13 ? 0.12 : 1;
+  // its day: walking, with pauses to look up at the rain or out at the viewer (seconds)
+  const ROUTE = [["walk", 24], ["up", 5], ["walk", 26], ["viewer", 4], ["walk", 22], ["up", 4.5], ["walk", 25]];
+  const ROUTE_SECONDS = ROUTE.reduce((sum, [, d]) => sum + d, 0);
+  const WALK_TOTAL = ROUTE.filter(([k]) => k === "walk").reduce((sum, [, d]) => sum + d, 0);
+
+  function walkerState(t) {
+    let rest = t % ROUTE_SECONDS, walked = 0;
+    for (const [kind, duration] of ROUTE) {
+      if (rest < duration) {
+        if (kind === "walk") return { progress: (walked + rest) / WALK_TOTAL, walkTime: walked + rest, look: null, lookAmount: 0 };
+        const amount = smooth(0, 0.6, rest) * (1 - smooth(duration - 0.6, duration, rest));
+        return { progress: walked / WALK_TOTAL, walkTime: walked, look: kind, lookAmount: amount };
+      }
+      rest -= duration;
+      if (kind === "walk") walked += duration;
+    }
+    return { progress: 1, walkTime: WALK_TOTAL, look: null, lookAmount: 0 };
+  }
+
+  // a fixed, per-point wobble so outlines look brushed rather than drawn with a ruler
+  const wobble = (k) => { const v = Math.sin(k * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v) - 0.5; };
+
+  function brushedPath(segments, seed, amount = 0.32) {
+    const path = new Path2D();
+    let k = seed, first = true;
+    for (const seg of segments) {
+      const [p0, p1, p2, p3] = seg;
+      const n = 8;
+      for (let i = first ? 0 : 1; i <= n; i++) {
+        const t = i / n, mt = 1 - t;
+        const x = mt * mt * mt * p0[0] + 3 * mt * mt * t * p1[0] + 3 * mt * t * t * p2[0] + t * t * t * p3[0];
+        const y = mt * mt * mt * p0[1] + 3 * mt * mt * t * p1[1] + 3 * mt * t * t * p2[1] + t * t * t * p3[1];
+        const jx = wobble(k++) * amount, jy = wobble(k++) * amount;
+        first ? path.moveTo(x + jx, y + jy) : path.lineTo(x + jx, y + jy);
+        first = false;
+      }
+    }
+    return path;
+  }
+
+  let canopy = null;   // where the umbrella is this frame, so rain can splash off it
+
+  function drawWalker(x, y, s, alpha, t, state) {
+    const walking = !state.look;
+    const phase = state.walkTime * 2.2;                     // one step every ~1.4 s while walking
+    const stride = walking ? Math.sin(phase) : 0;
+    const breath = Math.sin(t * 1.7) * 0.25;
+    const bob = walking ? -Math.abs(Math.sin(phase)) * 0.85 : breath;
+    const headBob = walking ? -Math.abs(Math.sin(phase - 0.6)) * 0.9 : breath * 1.2;
+    const lean = walking ? Math.sin(phase) * 0.025 : 0;
+    const up = state.look === "up" ? state.lookAmount : 0;
+    const viewer = state.look === "viewer" ? state.lookAmount : 0;
+    const blink = (t % 4.3) < 0.13 ? 0.12 : 1;
+    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2;
 
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(x, y);
     ctx.scale(s, s);
-    ctx.rotate(sway);
+    ctx.rotate(lean);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.fillStyle = SILHOUETTE;
     ctx.strokeStyle = SILHOUETTE;
 
-    // walking stick, planted ahead, swinging with the steps
+    // walking stick, planted ahead; the body leans onto it with each step
     const caneTop = { x: 11.5, y: -9.5 + bob };
     const caneTip = { x: 15.5 + stride * 1.6, y: 0 };
     ctx.lineWidth = 1.1;
@@ -356,55 +404,79 @@
     ctx.beginPath(); ctx.moveTo(caneTop.x - 2, caneTop.y - 1.6); ctx.quadraticCurveTo(caneTop.x, caneTop.y - 3, caneTop.x + 0.3, caneTop.y - 1); ctx.stroke();
 
     // legs: short shuffling steps
-    const leg = (dir, width) => {
+    const leg = (dir) => {
       const footX = dir * 2.6 + (dir > 0 ? stride : -stride) * 1.8;
       const lift = Math.max(0, dir > 0 ? stride : -stride) * 0.8;
-      ctx.lineWidth = width;
+      ctx.lineWidth = 2.6;
       ctx.beginPath(); ctx.moveTo(dir * 1.2, -5 + bob); ctx.lineTo(footX, -lift); ctx.stroke();
       ctx.beginPath(); ctx.ellipse(footX + 0.9, -lift - 0.3, 2.1, 1, 0, 0, Math.PI * 2); ctx.fill();
     };
-    leg(-1, 2.6);
+    leg(-1);
 
-    // body and head: one hunched silhouette
+    // wet-ink softness around the silhouette
+    ctx.shadowColor = "rgba(20,20,19,0.45)";
+    ctx.shadowBlur = 1.6 * liveDpr;
+
+    // body: hunched back with a little hump, leaning onto the stick with each step
     ctx.save();
     ctx.translate(0, bob);
-    ctx.beginPath();
-    ctx.moveTo(-8.5, -4.5);
-    ctx.bezierCurveTo(-11, -11, -10.5, -18.5, -6, -21.5);    // back rising to the hump
-    ctx.bezierCurveTo(-2.5, -24, 2.5, -22, 5, -18);          // over the hump, shoulders falling forward
-    ctx.bezierCurveTo(6.5, -15.5, 7, -11, 5.5, -8);           // chest
-    ctx.bezierCurveTo(4, -5, 0, -3.8, -3, -3.8);              // belly
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath(); ctx.ellipse(9, -14.8, 6.2, 5.6, -0.15, 0, Math.PI * 2); ctx.fill();   // head, low and forward
-    ctx.beginPath(); ctx.ellipse(5.2, -19.8, 1.6, 2.4, -0.5, 0, Math.PI * 2); ctx.fill();  // ear
-    // arm reaching forward to the stick
+    ctx.fill(brushedPath([
+      [[-8.5, -4.5], [-11, -11], [-10.5, -18.5], [-6, -21.5]],    // back rising to the hump
+      [[-6, -21.5], [-2.5, -24], [2.5, -22], [5, -18]],           // over the hump, shoulders falling forward
+      [[5, -18], [6.5, -15.5], [7, -11], [5.5, -8]],              // chest
+      [[5.5, -8], [4, -5], [0, -3.8], [-3, -3.8]],                // belly
+      [[-3, -3.8], [-5, -3.8], [-7, -4], [-8.5, -4.5]],
+    ], 11));
+    ctx.shadowBlur = 0;
+    // arm reaching forward to the stick, and the arm holding the umbrella
     ctx.lineWidth = 2.2;
     ctx.beginPath(); ctx.moveTo(3, -13.5); ctx.quadraticCurveTo(8, -9.5, caneTop.x, caneTop.y - bob); ctx.stroke();
-    // arm holding the umbrella
-    ctx.beginPath(); ctx.moveTo(1, -16); ctx.quadraticCurveTo(4, -21, 3.2, -24); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1, -16); ctx.quadraticCurveTo(4, -21, 3.3, -24); ctx.stroke();
+    ctx.restore();
 
-    // big white eyes, looking ahead
+    leg(1);
+
+    // head: carried low and forward, bobbing just after the body, tipping back to look up
+    ctx.save();
+    ctx.translate(0, headBob);
+    ctx.translate(5.5, -17.5);
+    ctx.rotate(-up * 0.22 - viewer * 0.06);
+    ctx.translate(-5.5, 17.5);
+    ctx.shadowColor = "rgba(20,20,19,0.45)";
+    ctx.shadowBlur = 1.6 * liveDpr;
+    const k = 0.5523;
+    const [hx0, hy0, hrx, hry] = [9, -14.8, 6.2, 5.6];
+    ctx.fill(brushedPath([
+      [[hx0 + hrx, hy0], [hx0 + hrx, hy0 + hry * k], [hx0 + hrx * k, hy0 + hry], [hx0, hy0 + hry]],
+      [[hx0, hy0 + hry], [hx0 - hrx * k, hy0 + hry], [hx0 - hrx, hy0 + hry * k], [hx0 - hrx, hy0]],
+      [[hx0 - hrx, hy0], [hx0 - hrx, hy0 - hry * k], [hx0 - hrx * k, hy0 - hry], [hx0, hy0 - hry]],
+      [[hx0, hy0 - hry], [hx0 + hrx * k, hy0 - hry], [hx0 + hrx, hy0 - hry * k], [hx0 + hrx, hy0]],
+    ], 61, 0.26));
+    ctx.beginPath(); ctx.ellipse(5.2, -19.8, 1.6, 2.4, -0.5, 0, Math.PI * 2); ctx.fill();   // ear
+    ctx.shadowBlur = 0;
+    // big white eyes; pupils look ahead, up at the rain, or out at you
+    const look = { x: 0.35 * (1 - viewer) - 0.25 * viewer, y: 0.15 - up * 0.9 + viewer * 0.1 };
     const eye = (ex, ey, rx, ry) => {
       ctx.fillStyle = "#FFFFFF";
       ctx.beginPath(); ctx.ellipse(ex, ey, rx, ry * blink, 0, 0, Math.PI * 2); ctx.fill();
       if (blink === 1) {
         ctx.fillStyle = SILHOUETTE;
-        ctx.beginPath(); ctx.arc(ex + rx * 0.35, ey + ry * 0.15, rx * 0.42, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex + rx * look.x, ey + ry * look.y, rx * 0.42, 0, Math.PI * 2); ctx.fill();
       }
     };
-    eye(7.4, -15.6, 1.9, 2.5);   // far eye, a little smaller
-    eye(11.1, -15.3, 2.3, 2.9);  // near eye
+    eye(7.4 - viewer * 0.5, -15.6, 1.9, 2.5);   // far eye, a little smaller
+    eye(11.1, -15.3, 2.3, 2.9);                 // near eye
     ctx.restore();
 
-    leg(1, 2.6);
-
-    // umbrella: shaft from the raised hand, red canopy above the hump
+    // umbrella: swaying a beat behind the steps, tipped back when it looks up
     ctx.save();
     ctx.translate(0, bob);
+    ctx.translate(3.3, -24);
+    ctx.rotate(umbrellaTilt);
+    ctx.translate(-3.3, 24);
     ctx.strokeStyle = SILHOUETTE;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(3.2, -23.5); ctx.lineTo(1.2, -40.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(3.3, -23.5); ctx.lineTo(1.2, -40.5); ctx.stroke();
     ctx.translate(1, -31);
     ctx.fillStyle = SEAL;
     ctx.beginPath();
@@ -419,11 +491,57 @@
     ctx.restore();
 
     ctx.restore();
+
+    // remember the canopy in screen space: its centre at the rim, its scale and its tilt
+    const tilt = lean + umbrellaTilt;
+    const hx = 3.3, hy = -24 + bob;
+    const ox = 1 - 3.3, oy = -31 + 24;
+    const rx = hx + ox * Math.cos(umbrellaTilt) - oy * Math.sin(umbrellaTilt);
+    const ry = hy + ox * Math.sin(umbrellaTilt) + oy * Math.cos(umbrellaTilt);
+    canopy = { x: x + rx * s, y: y + ry * s, s, tilt, alpha };
+  }
+
+  // Rain meeting the canopy: returns "hit", "under" (sheltered, not drawn) or null.
+  function canopyContact(px, py) {
+    if (!canopy || canopy.alpha < 0.3) return null;
+    const dx = (px - canopy.x) / canopy.s, dy = (py - canopy.y) / canopy.s;
+    const c = Math.cos(-canopy.tilt), sn = Math.sin(-canopy.tilt);
+    const lx = dx * c - dy * sn, ly = dx * sn + dy * c;
+    if (Math.abs(lx) > 18) return null;
+    const surface = -19 + 11 * (lx / 18) * (lx / 18);
+    if (ly < surface - 0.5) return null;
+    if (ly <= surface + 2.5) return "hit";
+    return ly < 34 ? "under" : null;
+  }
+
+  let splashes = [];
+  function splash(px, py) {
+    if (splashes.length > 120) return;
+    const side = px < canopy.x ? -1 : 1;
+    for (let i = 0; i < 3; i++) {
+      splashes.push({
+        x: px, y: py,
+        vx: side * (18 + Math.random() * 38) + (Math.random() - 0.5) * 20,
+        vy: -(26 + Math.random() * 40),
+        life: 0.32 + Math.random() * 0.15,
+      });
+    }
+  }
+
+  function drawSplashes(dt) {
+    if (!splashes.length) return;
+    const path = new Path2D();
+    for (const p of splashes) {
+      p.vy += 320 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      path.moveTo(p.x + 0.8, p.y); path.arc(p.x, p.y, 0.8, 0, Math.PI * 2);
+    }
+    splashes = splashes.filter((p) => p.life > 0);
+    ctx.fillStyle = `rgba(${INK.join(",")},0.32)`;
+    ctx.fill(path);
   }
 
   // ───────── frame ─────────
 
-  const WALK_SECONDS = 90;
   const start = performance.now();
   let last = start;
   let running = false;
@@ -439,13 +557,14 @@
     ctx.setTransform(liveDpr, 0, 0, liveDpr, 0, 0);
 
     // walker follows the near ridge
-    const p = still ? 0.45 : (t % WALK_SECONDS) / WALK_SECONDS;
+    const state = still ? { progress: 0.45, walkTime: 0, look: null, lookAmount: 0 } : walkerState(t);
+    const p = state.progress;
     const u = 0.5 + 0.3 * p;
     const fade = still ? 1 : smooth(0, 0.05, p) * (1 - smooth(0.95, 1, p));
     const s = (H / 640) * 1.3;
     const wx = u * W;
     const wy = near.ridge(u) * H + 1;
-    drawWalker(wx, wy, s, fade, still ? 0 : t);
+    drawWalker(wx, wy, s, fade, still ? 0 : t, state);
 
     // rain at several depths, batched into a few paths by thickness and strength
     ctx.lineCap = "round";
@@ -457,6 +576,13 @@
         d.x -= d.speed * dt * 0.2;
         if (d.y - d.len > H) { d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * 0.2; }
       }
+      const contact = canopyContact(d.x, d.y);
+      if (contact === "hit" && !still) {
+        splash(d.x, d.y);
+        d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * 0.2;
+        continue;
+      }
+      if (contact) continue;
       let rainAlpha = 0.04 + 0.11 * d.z;
       if (calm) {
         const inside = Math.min(d.x - calm.left, calm.right - d.x, d.y - calm.top, calm.bottom - d.y);
@@ -474,6 +600,7 @@
       ctx.strokeStyle = `rgba(${INK.join(",")},${((key % 100) * 0.015).toFixed(3)})`;
       ctx.stroke(path);
     }
+    drawSplashes(still ? 0 : dt);
 
     if (running) raf = requestAnimationFrame(frame);
   }
