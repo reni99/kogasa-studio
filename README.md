@@ -25,8 +25,12 @@ different composition in the same style.
 
 ## Adding an app
 
-Copy FoilFold's `<figure class="sheet">` in the stamp book and change:
+Copy FoilFold's `<article class="chapter chapter--app">` in the stamp book and change:
 
-- `--hue` (the page's watercolour wash) and `--tilt` (how askew the sheet lies)
-- the vertical title, the seal character and its colour (`--stamp`) and tilt (`--r`)
-- the caption: icon, name, description and link
+- the chapter numeral in the eyebrow (壱, 弐, 参, 肆, 伍 …) and `--accent` on the card
+- on the sheet: `--hue` (watercolour wash), `--tilt`, the vertical title, and the seal's
+  character, colour (`--stamp`) and tilt (`--r`)
+- the text: icon, name, pitch, features, platforms and links
+- the screenshots in `assets/<app>/`
+
+Move the blank "Not yet" chapter to the end and renumber it.

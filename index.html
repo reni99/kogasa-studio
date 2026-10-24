@@ -75,12 +75,13 @@
 
   <main class="content">
     <section id="apps" class="colour" aria-labelledby="colour-title">
+      <canvas class="colour__grey" aria-hidden="true"></canvas>
       <canvas class="colour__paint" aria-hidden="true"></canvas>
       <div class="colour__inner">
       <div class="manifesto">
         <p class="eyebrow">After the rain · 雨上がり</p>
         <h2 id="colour-title">Less slop.<br>More colour.</h2>
-        <p>The App Store is flooded with clones, ad-stuffed templates and apps nobody cared about. We build with AI too, and spend the time it saves on the part that matters: we draw our own visuals, sweat the details, and give every app its own colour and its own seal.</p>
+        <p>The App Store is full of apps nobody cared about. We take the time others skip: our own drawings, careful words, the small details. Every app gets its own colour and its own seal.</p>
       </div>
 
       <div class="book">
@@ -92,9 +93,10 @@
         <p class="section-head__text">At Japanese temples, visitors collect a page of brush writing and a red seal. We keep a book like that for our apps. Each app earns a page, its own seal and the studio's mark when it ships.</p>
       </div>
 
-      <div class="sheets" role="list">
-        <figure class="sheet" role="listitem" style="--hue: #C8463A; --tilt: -1.4deg">
-          <div class="page" aria-hidden="true">
+      <div class="chapters">
+        <article class="chapter" aria-labelledby="studio-page-title">
+          <figure class="sheet" style="--hue: #C8463A; --tilt: -1.4deg">
+            <div class="page" aria-hidden="true">
             <svg class="page__wash" viewBox="0 0 110 160" preserveAspectRatio="none">
               <g filter="url(#bleed)">
                 <ellipse cx="52" cy="84" rx="38" ry="42"/>
@@ -105,14 +107,17 @@
             <span class="stamp" style="--r: -3deg"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)"><rect x="3" y="3" width="94" height="94" rx="5" fill="currentColor"/><text x="50" y="30" text-anchor="middle" dominant-baseline="central" font-size="42" fill="#F6F5F0">小</text><text x="50" y="72" text-anchor="middle" dominant-baseline="central" font-size="42" fill="#F6F5F0">傘</text></g></svg></span>
             <span class="page__date page__date--bottom">令和八年</span>
           </div>
-          <figcaption>
-            <h3>The studio</h3>
-            <p>The first page. Founded in Switzerland, 2026.</p>
-          </figcaption>
-        </figure>
+          </figure>
+          <div class="chapter__text">
+            <p class="eyebrow"><span class="chapter__num" lang="ja">壱</span> The opening page</p>
+            <h3 id="studio-page-title" class="chapter__title">Kogasa Studio</h3>
+            <p class="chapter__pitch">The first page of the book carries the studio’s own seal, 小傘. Founded in Switzerland in 2026, to make a few apps worth keeping and to look after them.</p>
+          </div>
+        </article>
 
-        <figure class="sheet" role="listitem" style="--hue: #C9A24B; --tilt: 0.9deg">
-          <div class="page" aria-hidden="true">
+        <article class="chapter chapter--app" aria-labelledby="foilfold-title" style="--accent: var(--gold)">
+          <figure class="sheet" style="--hue: #C9A24B; --tilt: 0.9deg">
+            <div class="page" aria-hidden="true">
             <svg class="page__wash" viewBox="0 0 110 160" preserveAspectRatio="none">
               <g filter="url(#bleed)">
                 <ellipse cx="62" cy="70" rx="40" ry="46"/>
@@ -149,25 +154,54 @@
             </svg>
             <span class="page__title page__title--long">フォイルフォールド</span>
             <span class="stamp" style="--r: 4deg; --top: 44%; --stamp: var(--gold)"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)"><rect x="3" y="3" width="94" height="94" rx="5" fill="currentColor"/><text x="50" y="54" text-anchor="middle" dominant-baseline="central" font-size="68" fill="#F6F5F0">箔</text></g></svg></span>
-            <span class="stamp stamp--mark" style="--r: -9deg; --top: 82%; --left: 30%; --size: 42px; --delay: .35s"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)" fill="currentColor"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-size="30">小</text><text x="50" y="66" text-anchor="middle" dominant-baseline="central" font-size="30">傘</text></g></svg></span>
+            <span class="stamp stamp--mark" style="--r: -9deg; --top: 82%; --left: 30%; --delay: .35s"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)" fill="currentColor"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-size="30">小</text><text x="50" y="66" text-anchor="middle" dominant-baseline="central" font-size="30">傘</text></g></svg></span>
             <span class="page__date page__date--top">令和八年</span>
           </div>
-          <figcaption>
-            <h3><img src="assets/foilfold-icon.png" alt="" width="28" height="28">FoilFold</h3>
-            <p>The fastest offline-first way to track your Magic: The Gathering collection, on iPhone and Mac. Seal: 箔, gold foil.</p>
-            <a href="https://foilfold.com">foilfold.com</a>
-          </figcaption>
-        </figure>
+          </figure>
+          <div class="chapter__text">
+          <p class="eyebrow"><span class="chapter__num" lang="ja">弐</span> Now under the umbrella</p>
+          <div class="chapter__name">
+            <img src="assets/foilfold-icon.png" alt="" width="64" height="64">
+            <div>
+              <h3 id="foilfold-title">FoilFold</h3>
+              <p class="chapter__kind">Magic: The Gathering collection tracker</p>
+            </div>
+          </div>
+          <p class="chapter__pitch">The fastest offline-first way to track your Magic collection. Find any card in an instant, add it in seconds, and always know what your collection is worth.</p>
+          <ul class="chapter__features">
+            <li><strong>Instant search</strong> across every card and printing, even with typos</li>
+            <li><strong>Works offline</strong>: your collection is always there, no connection needed</li>
+            <li><strong>Syncs through your own iCloud</strong>, with no account and no tracking</li>
+            <li><strong>Collection value</strong> at a glance, from current market prices</li>
+          </ul>
+          <p class="chapter__platforms">iPhone · iPad · Mac</p>
+          <div class="chapter__actions">
+            <span class="store-badge" aria-disabled="true">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.37 12.62c-.03-2.6 2.13-3.86 2.22-3.92-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.94.94-.81 0-2.06-.92-3.39-.89-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.24 1.89 2.64 3.23 2.59 1.3-.05 1.79-.84 3.36-.84 1.56 0 2.01.84 3.38.81 1.4-.02 2.28-1.27 3.13-2.52.99-1.44 1.39-2.84 1.42-2.91-.03-.01-2.72-1.04-2.75-4.13zM13.79 4.98c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-3 1.54-.66.76-1.23 1.98-1.08 3.15 1.14.09 2.3-.58 3.02-1.44z"/></svg>
+              <span><small>Coming soon to the</small>App Store</span>
+            </span>
+            <a class="chapter__link" href="https://foilfold.com">foilfold.com <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+          <div class="chapter__phones" aria-label="FoilFold screenshots">
+          <figure class="phone phone--left"><img src="assets/foilfold/search.jpg" alt="Searching for Shivan cards, shown as a grid of card images with prices" width="478" height="1040" loading="lazy"></figure>
+          <figure class="phone phone--center"><img src="assets/foilfold/collection.jpg" alt="The collection screen: 118 cards worth an estimated $848, with recently added cards" width="478" height="1040" loading="lazy"></figure>
+          <figure class="phone phone--right"><img src="assets/foilfold/card.jpg" alt="The Shivan Dragon card page with its text, printing, price and options to add it to the collection" width="478" height="1040" loading="lazy"></figure>
+        </div>
+        </article>
 
-        <figure class="sheet sheet--empty" role="listitem" style="--tilt: -0.6deg">
-          <div class="page page--blank" aria-hidden="true">
+        <article class="chapter chapter--next" aria-labelledby="next-page-title">
+          <figure class="sheet sheet--empty" style="--tilt: -0.6deg">
+            <div class="page page--blank" aria-hidden="true">
             <span class="stamp-outline">未</span>
           </div>
-          <figcaption>
-            <h3>Next page</h3>
-            <p>Left blank until the next app ships. 未 means not yet.</p>
-          </figcaption>
-        </figure>
+          </figure>
+          <div class="chapter__text">
+            <p class="eyebrow"><span class="chapter__num" lang="ja">参</span> Not yet</p>
+            <h3 id="next-page-title" class="chapter__title">The next page</h3>
+            <p class="chapter__pitch">Left blank until the next app is ready. 未 means not yet: no seal until it has earned one.</p>
+          </div>
+        </article>
       </div>
       </div>
       </div>

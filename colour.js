@@ -2,10 +2,12 @@
 //
 // The same ink-wash technique as the header, now with pigment: watercolour blooms that
 // pool darker at their edges, a flowering plum branch, and flecks of gold leaf (箔).
-// It is painted once per size; main.js fades it from grey to full colour on scroll.
+// It is painted once per size, together with a grey copy underneath; main.js fades the
+// colour copy in over the grey one on scroll (an opacity change only, so it stays smooth).
 
 (() => {
   const canvas = document.querySelector(".colour__paint");
+  const grey = document.querySelector(".colour__grey");
   if (!canvas || !canvas.getContext || !window.Ink) return;
   const { mulberry32, smooth, noise2, paperPattern } = window.Ink;
   const ctx = canvas.getContext("2d");
@@ -181,7 +183,24 @@
 
     ctx.fillStyle = paperPattern(ctx, SEED + 1);
     ctx.fillRect(0, 0, W, H);
+    paintGrey();
     canvas.classList.add("is-ready");
+  }
+
+  // The same painting without colour: the rainy state the section fades in from.
+  function paintGrey() {
+    if (!grey) return;
+    grey.width = canvas.width;
+    grey.height = canvas.height;
+    const g = grey.getContext("2d");
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const lum = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
+      d[i] = d[i + 1] = d[i + 2] = lum;
+    }
+    g.putImageData(img, 0, 0);
+    grey.classList.add("is-ready");
   }
 
   paint();

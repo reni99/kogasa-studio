@@ -260,15 +260,19 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   padding: 140px var(--gutter) 120px calc(var(--rail) + var(--gutter));
   scroll-margin-top: 0;
 }
+/* Two copies of the painting: a grey one underneath, and the colour one fading in over it.
+   Only opacity changes while scrolling, which the GPU handles cheaply. */
+.colour__grey,
 .colour__paint {
   position: absolute; inset: 0; width: 100%; height: 100%;
   display: block;
-  filter: grayscale(calc(1 - var(--colour))) saturate(calc(0.6 + 0.5 * var(--colour)));
   opacity: 0;
   -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 140px, #000 calc(100% - 140px), transparent 100%);
           mask-image: linear-gradient(180deg, transparent 0, #000 140px, #000 calc(100% - 140px), transparent 100%);
 }
-.colour__paint.is-ready { opacity: calc(0.5 + 0.5 * var(--colour)); }
+.colour__paint { will-change: opacity; }
+.colour__grey.is-ready { opacity: .5; }
+.colour__paint.is-ready { opacity: var(--colour); }
 .colour__inner { position: relative; }
 
 .manifesto { max-width: 660px; margin-bottom: 104px; }
@@ -286,7 +290,6 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 
 /* The stamp book: loose sheets laid on the table, each slightly askew.
    A sheet straightens and lifts when you point at it. */
-.sheets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 32px; }
 .sheet { margin: 0; }
 .sheet .page {
   transform: rotate(var(--tilt, 0deg));
@@ -296,12 +299,83 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   transform: rotate(0deg) translateY(-8px);
   box-shadow: 0 2px 0 #CFCCC2, 0 36px 56px -30px rgba(27, 27, 26, .5);
 }
-.sheet figcaption { padding: 22px 4px 0; }
-.sheet h3 { margin: 0; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; line-height: 1.5; }
-.sheet h3 img { width: 28px; height: 28px; border-radius: 7px; }
-.sheet figcaption p { margin: 4px 0; color: var(--muted); font-size: 15px; }
-.sheet figcaption a { font-size: 15px; }
-.sheet--empty h3 { color: var(--ink-3); }
+
+/* Chapters: each page of the stamp book gets its own card, with the stamped sheet on the
+   left. App chapters add what the app does, how to get it, and a few screens. */
+.chapters { display: grid; gap: 40px; }
+.chapter {
+  position: relative;
+  display: grid;
+  grid-template-columns: clamp(170px, 17vw, 220px) minmax(0, 1fr);
+  gap: clamp(32px, 4vw, 56px);
+  align-items: center;
+  padding: clamp(28px, 4vw, 56px);
+  background: rgba(246, 245, 240, .9) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1  0 0 0 0 .1  0 0 0 0 .1  0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  border: 1px solid #D3D0C6;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #CFCCC2, 0 30px 60px -36px rgba(27, 27, 26, .45);
+}
+.chapter--app { grid-template-columns: clamp(170px, 17vw, 220px) minmax(0, 1fr) minmax(0, 1fr); }
+/* sheets sit narrower inside a chapter card, so their brushwork and seals scale down */
+.chapter .page { padding: 20px 16px; }
+.chapter .page__title { font-size: clamp(28px, 2.6vw, 36px); }
+.chapter .page__title--long { font-size: clamp(19px, 1.75vw, 24px); }
+.chapter .page__date { font-size: 13px; }
+.chapter .stamp { --size: clamp(60px, 6vw, 78px); }
+.chapter .stamp--mark { --size: clamp(30px, 2.8vw, 36px); }
+.chapter .stamp-outline { width: 70px; height: 70px; font-size: 34px; }
+.chapter--next { background: rgba(243, 242, 236, .75); box-shadow: none; border-style: dashed; }
+.chapter .eyebrow { color: var(--accent, var(--seal)); font-weight: 500; display: flex; align-items: baseline; gap: 10px; }
+.chapter--next .eyebrow { color: var(--muted); }
+.chapter__num { font-family: var(--font-brush); font-size: 20px; letter-spacing: 0; text-transform: none; line-height: 1; }
+.chapter__title { margin: 12px 0 14px; font-weight: 900; font-size: clamp(28px, 3vw, 38px); line-height: 1.1; }
+.chapter--next .chapter__title { color: var(--ink-3); }
+.chapter__name { display: flex; align-items: center; gap: 16px; margin: 14px 0 18px; }
+.chapter__name img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 10px 22px -12px rgba(27, 27, 26, .55); }
+.chapter__name h3 { margin: 0; font-weight: 900; font-size: clamp(30px, 3.2vw, 40px); line-height: 1.1; }
+.chapter__kind { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+.chapter__pitch { margin: 0 0 20px; font-size: 18px; color: var(--ink-2); max-width: 44ch; }
+.chapter__features { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 10px; }
+.chapter__features li { position: relative; padding-left: 26px; color: var(--ink-3); max-width: 48ch; }
+.chapter__features li::before {
+  content: ""; position: absolute; left: 2px; top: .62em;
+  width: 10px; height: 10px; border-radius: 2px;
+  background: var(--gold); transform: rotate(45deg); opacity: .85;
+}
+.chapter__features strong { color: var(--ink); font-weight: 700; }
+.chapter__platforms { margin: 0 0 24px; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.chapter__actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.store-badge {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 9px 18px 9px 14px;
+  border-radius: 12px;
+  background: var(--ink); color: var(--paper);
+  opacity: .55;
+  cursor: default;
+}
+.store-badge span { display: flex; flex-direction: column; line-height: 1.15; font-weight: 700; font-size: 17px; }
+.store-badge small { font-weight: 400; font-size: 11px; letter-spacing: .02em; }
+.chapter__link { font-weight: 500; text-decoration: none; }
+.chapter__link:hover { text-decoration: underline; }
+
+.chapter__phones {
+  position: relative;
+  display: flex; justify-content: center; align-items: center;
+  padding-block: 12px;
+}
+.phone {
+  margin: 0;
+  width: 38%;
+  max-width: 230px;
+  border-radius: clamp(22px, 3vw, 36px);
+  padding: clamp(4px, .5vw, 7px);
+  background: #141413;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .06) inset, 0 26px 46px -24px rgba(27, 27, 26, .6);
+}
+.phone img { width: 100%; height: auto; border-radius: clamp(18px, 2.5vw, 30px); }
+.phone--left  { transform: translateX(18%) rotate(-6deg) scale(.88); z-index: 1; }
+.phone--center { position: relative; z-index: 2; }
+.phone--right { transform: translateX(-18%) rotate(6deg) scale(.88); z-index: 1; }
 
 /* Pages */
 .page {
@@ -430,6 +504,11 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 
 /* ───────────── Small screens ───────────── */
 
+@media (max-width: 1180px) {
+  .chapter--app { grid-template-columns: clamp(170px, 20vw, 220px) minmax(0, 1fr); }
+  .chapter--app .chapter__phones { grid-column: 1 / -1; max-width: 640px; justify-self: center; width: 100%; }
+}
+
 @media (max-width: 900px) {
   .hero__grid { grid-template-columns: minmax(0, 1fr); }
   .tate { display: none; }
@@ -437,7 +516,8 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   .content { padding-left: var(--gutter); }
   .colour { margin-left: calc(-1 * var(--gutter)); padding-left: var(--gutter); padding-top: 112px; }
   .manifesto { margin-bottom: 72px; }
-  .sheets { grid-template-columns: minmax(0, 1fr); max-width: 380px; margin-inline: auto; gap: 48px; }
+  .chapter, .chapter--app { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .chapter .sheet { width: min(220px, 62%); }
   .tenets { grid-template-columns: minmax(0, 1fr); gap: 40px; }
 }
 
