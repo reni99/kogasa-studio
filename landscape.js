@@ -46,6 +46,12 @@
   LAYERS.forEach((layer, i) => { layer.ridge = makeRidge(layer, i * 97 + 11); });
   const near = LAYERS[2];
 
+  // The two pines on the right, back to front. `sway` is how far (degrees) a gust bends each one.
+  const PINES = [
+    { u: 0.915, h: 230, lean: 0.22, seed: 9, tone: 0.6, blur: 0.5, density: 1.5, pad: 1.2, sway: 0.9 },
+    { u: 0.84, h: 360, lean: -0.18, seed: 8, density: 1.5, pad: 1.2, trunk: 1.15, sway: 1.5 },
+  ];
+
   // The stack, back to front. The mountain layers are stored at retina density (they are
   // painted once, so this costs memory, not frame time); the heavily blurred mist doesn't need it.
   const STACK = [
@@ -65,6 +71,17 @@
     scene.appendChild(item.wrap);
   }
   const stack = Object.fromEntries(STACK.map((item) => [item.key, item]));
+
+  const treesWrap = document.createElement("div");
+  treesWrap.className = "landscape__layer";
+  treesWrap.style.transitionDelay = "0.7s";
+  treesWrap.style.setProperty("--p", near.parallax);
+  for (const tree of PINES) {
+    tree.canvas = document.createElement("canvas");
+    tree.canvas.className = "landscape__tree";
+    treesWrap.appendChild(tree.canvas);
+  }
+  scene.appendChild(treesWrap);
 
   // rain and walker ride on the near hill's layer, so the walker stays on its path while scrolling
   const liveWrap = document.createElement("div");
@@ -164,15 +181,15 @@
     o.restore();
   }
 
-  function foliage(o, cx, cy, rx, ry, rand, scale) {
+  function foliage(o, cx, cy, rx, ry, rand, scale, tone = 1, density = 1) {
     o.save();
-    o.fillStyle = `rgba(${INK.join(",")},0.08)`;
+    o.fillStyle = `rgba(${INK.join(",")},${(0.08 * tone).toFixed(3)})`;
     o.filter = `blur(${3 * DPR}px)`;
     o.beginPath(); o.ellipse(cx, cy + ry * 0.2, rx * 1.05, ry * 1.1, 0, 0, Math.PI * 2); o.fill();
     o.restore();
 
     o.lineCap = "round";
-    const count = Math.round(rx * ry * 0.55);
+    const count = Math.round(rx * ry * 0.55 * density);
     for (let i = 0; i < count; i++) {
       const ang = rand() * Math.PI * 2, r = Math.sqrt(rand());
       const px = cx + Math.cos(ang) * rx * r;
@@ -181,13 +198,16 @@
       const dir = (rand() - 0.5) * Math.PI * 0.85 + (rand() < 0.5 ? 0 : Math.PI) - 0.25;
       const under = py > cy ? 1.2 : 0.8;
       const a = (0.16 + 0.42 * (1 - r * 0.55)) * under;
-      o.strokeStyle = `rgba(${INK.join(",")},${Math.min(a, 0.85).toFixed(3)})`;
+      o.strokeStyle = `rgba(${INK.join(",")},${(Math.min(a, 0.85) * tone).toFixed(3)})`;
       o.lineWidth = (0.7 + rand() * 0.9) * scale;
       o.beginPath(); o.moveTo(px, py); o.lineTo(px + Math.cos(dir) * len, py + Math.sin(dir) * len * 0.55); o.stroke();
     }
   }
 
-  function pine(o, x0, y0, height, lean, seed) {
+  // opts: tone (ink strength), density (needles), trunk (thickness), pad (pad size),
+  // wind (0 = branches alternate sides, 1 = all reach to the left)
+  function pine(o, x0, y0, height, lean, seed, opts = {}) {
+    const { tone = 1, density = 1, trunk = 1, pad = 1, wind = 0 } = opts;
     const rand = mulberry32(seed);
     const scale = height / 260;
     const n = 30, pts = [];
@@ -205,8 +225,8 @@
     for (let pass = 0; pass < 3; pass++) {
       for (let i = 0; i < n; i++) {
         const p = pts[i], q = pts[i + 1];
-        const w = height * 0.05 * (1 - p.t * 0.78) * (pass === 0 ? 1 : 0.55);
-        const a = pass === 0 ? 0.55 : 0.35 + rand() * 0.3;
+        const w = height * 0.05 * trunk * (1 - p.t * 0.78) * (pass === 0 ? 1 : 0.55);
+        const a = (pass === 0 ? 0.55 : 0.35 + rand() * 0.3) * tone;
         const off = pass === 0 ? 0 : (rand() - 0.5) * w * 0.6;
         o.strokeStyle = `rgba(${INK.join(",")},${a.toFixed(3)})`;
         o.lineWidth = w;
@@ -216,8 +236,8 @@
     // bark
     for (let k = 0; k < 70; k++) {
       const p = pts[Math.floor(rand() * n * 0.85)];
-      const w = height * 0.05 * (1 - p.t * 0.78);
-      o.fillStyle = `rgba(${INK.join(",")},${(0.35 + rand() * 0.4).toFixed(3)})`;
+      const w = height * 0.05 * trunk * (1 - p.t * 0.78);
+      o.fillStyle = `rgba(${INK.join(",")},${((0.35 + rand() * 0.4) * tone).toFixed(3)})`;
       o.beginPath();
       o.ellipse(p.x + (rand() - 0.5) * w * 0.8, p.y + (rand() - 0.5) * 6 * scale, w * (0.15 + rand() * 0.2), 1.2 * scale, rand() - 0.5, 0, Math.PI * 2);
       o.fill();
@@ -227,18 +247,18 @@
     const levels = [0.42, 0.55, 0.66, 0.77, 0.87];
     levels.forEach((lvl, i) => {
       const p = pts[Math.round(lvl * n)];
-      const side = i % 2 === 0 ? 1 : -1;
-      const len = height * (0.42 - lvl * 0.26) * (0.8 + rand() * 0.4);
+      const side = wind && rand() < wind ? -1 : (i % 2 === 0 ? 1 : -1);
+      const len = height * (0.42 - lvl * 0.26) * (0.8 + rand() * 0.4) * (side < 0 ? 1 + wind * 0.45 : 1);
       const ex = p.x + side * len, ey = p.y - len * (0.05 + rand() * 0.1);
       const mx = p.x + side * len * 0.5, my = p.y + len * 0.08;
-      o.strokeStyle = `rgba(${INK.join(",")},0.8)`;
-      o.lineWidth = height * 0.018 * (1 - lvl * 0.5);
+      o.strokeStyle = `rgba(${INK.join(",")},${(0.8 * tone).toFixed(3)})`;
+      o.lineWidth = height * 0.018 * trunk * (1 - lvl * 0.5);
       o.beginPath(); o.moveTo(p.x, p.y); o.quadraticCurveTo(mx, my, ex, ey); o.stroke();
-      foliage(o, ex - side * len * 0.2, ey - 4 * scale, len * 0.55, len * 0.14 + 6 * scale, rand, scale);
-      if (len > height * 0.18) foliage(o, mx, my - 6 * scale, len * 0.3, len * 0.1 + 4 * scale, rand, scale);
+      foliage(o, ex - side * len * 0.2, ey - 4 * scale, len * 0.55 * pad, (len * 0.14 + 6 * scale) * pad, rand, scale, tone, density);
+      if (len > height * 0.18) foliage(o, mx, my - 6 * scale, len * 0.3 * pad, (len * 0.1 + 4 * scale) * pad, rand, scale, tone, density);
     });
     const top = pts[n];
-    foliage(o, top.x, top.y + 4 * scale, height * 0.14, height * 0.05, rand, scale);
+    foliage(o, top.x, top.y + 4 * scale, height * 0.14 * pad, height * 0.05 * pad, rand, scale, tone, density);
   }
 
   function bakeFog(center, thickness, seed, target) {
@@ -287,9 +307,19 @@
     const nr = bakeWash(near, stack.near.canvas);
     dryBrushRidge(nr, near, 3.4, 0.75, SEED + 6);
     const pineScale = Math.min(H / 780, W / 900);
-    const u1 = 0.84, u2 = 0.915;
-    pine(nr, W * u1, near.ridge(u1) * H + 6, 300 * pineScale, -0.18, SEED + 8);
-    pine(nr, W * u2, near.ridge(u2) * H + 6, 190 * pineScale, 0.22, SEED + 9);
+    // each pine on its own small canvas, anchored at its base so the wind can bend it
+    for (const tree of PINES) {
+      const h = tree.h * pineScale;
+      const baseX = W * tree.u, baseY = near.ridge(tree.u) * H + 6;
+      const box = { left: baseX - h * 0.7, top: baseY - h * 1.12, width: h * 1.4, height: h * 1.12 + 14 };
+      const el = tree.canvas;
+      Object.assign(el.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+      el.width = Math.ceil(box.width * DPR); el.height = Math.ceil(box.height * DPR);
+      const o = el.getContext("2d");
+      o.setTransform(DPR, 0, 0, DPR, -box.left * DPR, -box.top * DPR);
+      if (tree.blur) o.filter = `blur(${tree.blur * DPR}px)`;
+      pine(o, baseX, baseY, h, tree.lean, SEED + tree.seed, tree);
+    }
 
     DPR = dprFor(stack.fog0);
     bakeFog(0.62, 0.07, SEED + 12, stack.fog0.canvas);
@@ -373,18 +403,24 @@
 
   let canopy = null;   // where the umbrella is this frame, so rain can splash off it
 
-  function drawWalker(x, y, s, alpha, t, state) {
+  // Wind: a slow, uneven gust between 0 (calm) and 1 (strong), blowing from right to left.
+  function gustAt(t) {
+    const g = 0.5 + 0.32 * Math.sin(t * 0.31) + 0.12 * Math.sin(t * 0.83 + 1.3) + 0.06 * Math.sin(t * 2.1 + 0.4);
+    return Math.min(Math.max(g, 0), 1);
+  }
+
+  function drawWalker(x, y, s, alpha, t, state, gust) {
     const walking = !state.look;
     const phase = state.walkTime * 2.2;                     // one step every ~1.4 s while walking
     const stride = walking ? Math.sin(phase) : 0;
     const breath = Math.sin(t * 1.7) * 0.25;
     const bob = walking ? -Math.abs(Math.sin(phase)) * 0.85 : breath;
     const headBob = walking ? -Math.abs(Math.sin(phase - 0.6)) * 0.9 : breath * 1.2;
-    const lean = walking ? Math.sin(phase) * 0.025 : 0;
+    const lean = (walking ? Math.sin(phase) * 0.025 : 0) + gust * 0.03;   // leans into the wind
     const up = state.look === "up" ? state.lookAmount : 0;
     const viewer = state.look === "viewer" ? state.lookAmount : 0;
     const blink = (t % 4.3) < 0.13 ? 0.12 : 1;
-    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2;
+    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2 - gust * 0.14 - Math.sin(t * 3.1) * gust * 0.03;   // pushed back by gusts
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -556,6 +592,16 @@
     ctx.clearRect(0, 0, live.width, live.height);
     ctx.setTransform(liveDpr, 0, 0, liveDpr, 0, 0);
 
+    const gust = still ? 0.35 : gustAt(t);
+
+    // the pines bend with the gust, from their base
+    if (!still) {
+      PINES.forEach((tree, i) => {
+        const bend = tree.sway * (0.25 + gust) + Math.sin(t * 1.6 + i * 1.7) * 0.12 * gust;
+        tree.canvas.style.transform = `skewX(${bend.toFixed(3)}deg)`;
+      });
+    }
+
     // walker follows the near ridge
     const state = still ? { progress: 0.45, walkTime: 0, look: null, lookAmount: 0 } : walkerState(t);
     const p = state.progress;
@@ -564,22 +610,23 @@
     const s = (H / 640) * 1.3;
     const wx = u * W;
     const wy = near.ridge(u) * H + 1;
-    drawWalker(wx, wy, s, fade, still ? 0 : t, state);
+    drawWalker(wx, wy, s, fade, still ? 0 : t, state, gust);
 
     // rain at several depths, batched into a few paths by thickness and strength
     ctx.lineCap = "round";
     const RAIN_WIDTHS = [0.7, 1.0, 1.3];
     const rainPaths = new Map();
+    const slant = 0.1 + 0.32 * gust;   // rain leans harder in a gust
     for (const d of drops) {
       if (!still) {
         d.y += d.speed * dt;
-        d.x -= d.speed * dt * 0.2;
-        if (d.y - d.len > H) { d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * 0.2; }
+        d.x -= d.speed * dt * slant;
+        if (d.y - d.len > H) { d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * slant; }
       }
       const contact = canopyContact(d.x, d.y);
       if (contact === "hit" && !still) {
         splash(d.x, d.y);
-        d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * 0.2;
+        d.y = -d.len - Math.random() * 40; d.x = Math.random() * (W + 80) - 40 + H * slant;
         continue;
       }
       if (contact) continue;
@@ -593,7 +640,7 @@
       const key = (d.z < 0.5 ? 0 : d.z < 0.75 ? 1 : 2) * 100 + level;
       let path = rainPaths.get(key);
       if (!path) { path = new Path2D(); rainPaths.set(key, path); }
-      path.moveTo(d.x, d.y); path.lineTo(d.x + d.len * 0.2, d.y - d.len);
+      path.moveTo(d.x, d.y); path.lineTo(d.x + d.len * slant, d.y - d.len);
     }
     for (const [key, path] of rainPaths) {
       ctx.lineWidth = RAIN_WIDTHS[Math.floor(key / 100)];

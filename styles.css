@@ -105,6 +105,8 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   will-change: transform;
 }
 .landscape__layer--fog:nth-child(4) canvas { animation-duration: 54s; animation-delay: -27s; }
+/* each pine has its own canvas, bent from its base by the wind (landscape.js) */
+.landscape__layer .landscape__tree { position: absolute; transform-origin: 50% 100%; will-change: transform; }
 @keyframes fog-drift { from { transform: translateX(-8.5%); } to { transform: translateX(8.5%); } }
 .landscape.is-ready .landscape__layer { opacity: 1; }
 
