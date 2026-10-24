@@ -26,9 +26,9 @@
   // ───────── scene description (fractions of width / height) ─────────
 
   const LAYERS = [
-    { name: "far",  base: 0.50, amp: 0.30, freq: 2.6, octaves: 6, sharp: 1.5, strength: 0.30, falloff: 0.16, edge: 0.18, res: 0.35, blur: 2.4, parallax: 0.18, delay: 0.0 },
-    { name: "mid",  base: 0.66, amp: 0.20, freq: 4.2, octaves: 6, sharp: 1.3, strength: 0.55, falloff: 0.11, edge: 0.45, res: 0.5,  blur: 1.0, parallax: 0.10, delay: 0.35 },
-    { name: "near", base: 0.83, amp: 0.07, freq: 1.8, octaves: 5, sharp: 1.0, strength: 0.86, falloff: 0.30, edge: 0.75, res: 0.75, blur: 0.4, parallax: 0.04, delay: 0.7 },
+    { name: "far",  base: 0.50, amp: 0.30, freq: 2.6, octaves: 6, sharp: 1.5, strength: 0.30, falloff: 0.16, edge: 0.18, res: 0.9, blur: 1.1, parallax: 0.18, delay: 0.0 },
+    { name: "mid",  base: 0.66, amp: 0.20, freq: 4.2, octaves: 6, sharp: 1.3, strength: 0.55, falloff: 0.11, edge: 0.45, res: 1.0, blur: 0.6, parallax: 0.10, delay: 0.35 },
+    { name: "near", base: 0.83, amp: 0.07, freq: 1.8, octaves: 5, sharp: 1.0, strength: 0.86, falloff: 0.30, edge: 0.75, res: 1.0, blur: 0.3, parallax: 0.04, delay: 0.7 },
   ];
 
   function makeRidge(layer, seedOffset) {
@@ -46,12 +46,12 @@
   LAYERS.forEach((layer, i) => { layer.ridge = makeRidge(layer, i * 97 + 11); });
   const near = LAYERS[2];
 
-  // The stack, back to front. Soft washes and mist don't need retina resolution;
-  // the near hill with the pines does.
+  // The stack, back to front. The mountain layers are stored at retina density (they are
+  // painted once, so this costs memory, not frame time); the heavily blurred mist doesn't need it.
   const STACK = [
-    { key: "far",  parallax: 0.18, dpr: 1,   delay: 0 },
+    { key: "far",  parallax: 0.18, dpr: 2,   delay: 0 },
     { key: "fog0", parallax: 0.14, dpr: 1,   delay: 0.2, fog: true },
-    { key: "mid",  parallax: 0.10, dpr: 1.5, delay: 0.35 },
+    { key: "mid",  parallax: 0.10, dpr: 2,   delay: 0.35 },
     { key: "fog1", parallax: 0.07, dpr: 1,   delay: 0.5, fog: true },
     { key: "near", parallax: 0.04, dpr: 2,   delay: 0.7 },
   ];
