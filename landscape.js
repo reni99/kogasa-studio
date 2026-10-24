@@ -48,8 +48,8 @@
 
   // The two pines on the right, back to front. `sway` is how far (degrees) a gust bends each one.
   const PINES = [
-    { u: 0.915, h: 230, lean: 0.22, seed: 9, tone: 0.6, blur: 0.5, density: 1.5, pad: 1.2, sway: 0.9 },
-    { u: 0.84, h: 360, lean: -0.18, seed: 8, density: 1.5, pad: 1.2, trunk: 1.15, sway: 1.5 },
+    { u: 0.915, h: 230, lean: 0.22, seed: 9, tone: 0.6, blur: 0.5, density: 1.5, pad: 1.2, sway: 1.7 },
+    { u: 0.84, h: 360, lean: -0.18, seed: 8, density: 1.5, pad: 1.2, trunk: 1.15, sway: 2.8 },
   ];
 
   // The stack, back to front. The mountain layers are stored at retina density (they are
@@ -311,6 +311,7 @@
     for (const tree of PINES) {
       const h = tree.h * pineScale;
       const baseX = W * tree.u, baseY = near.ridge(tree.u) * H + 6;
+      Object.assign(tree, { baseX, baseY, size: h });   // where needles can blow from
       const box = { left: baseX - h * 0.7, top: baseY - h * 1.12, width: h * 1.4, height: h * 1.12 + 14 };
       const el = tree.canvas;
       Object.assign(el.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
@@ -402,6 +403,7 @@
   }
 
   let canopy = null;   // where the umbrella is this frame, so rain can splash off it
+  let windSoft = 0.35; // the gust with a little inertia: trees, umbrella and walker ease into it
 
   // Wind: a slow, uneven gust between 0 (calm) and 1 (strong), blowing from right to left.
   function gustAt(t) {
@@ -416,11 +418,12 @@
     const breath = Math.sin(t * 1.7) * 0.25;
     const bob = walking ? -Math.abs(Math.sin(phase)) * 0.85 : breath;
     const headBob = walking ? -Math.abs(Math.sin(phase - 0.6)) * 0.9 : breath * 1.2;
-    const lean = (walking ? Math.sin(phase) * 0.025 : 0) + gust * 0.03;   // leans into the wind
+    const sway = Math.sin(t * 1.05) * (0.4 + gust);                         // slow, soft rhythm of the wind
+    const lean = (walking ? Math.sin(phase) * 0.025 : 0) + gust * 0.03 + sway * 0.01;   // leans into the wind
     const up = state.look === "up" ? state.lookAmount : 0;
     const viewer = state.look === "viewer" ? state.lookAmount : 0;
     const blink = (t % 4.3) < 0.13 ? 0.12 : 1;
-    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2 - gust * 0.14 - Math.sin(t * 3.1) * gust * 0.03;   // pushed back by gusts
+    const umbrellaTilt = (walking ? Math.sin(phase - 1.0) * 0.05 : 0) - up * 0.2 - gust * 0.14 - Math.sin(t * 1.05 + 0.7) * (0.4 + gust) * 0.05;   // pushed back by gusts, swaying softly
 
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -488,7 +491,7 @@
       [[hx0 - hrx, hy0], [hx0 - hrx, hy0 - hry * k], [hx0 - hrx * k, hy0 - hry], [hx0, hy0 - hry]],
       [[hx0, hy0 - hry], [hx0 + hrx * k, hy0 - hry], [hx0 + hrx, hy0 - hry * k], [hx0 + hrx, hy0]],
     ], 61, 0.26));
-    ctx.beginPath(); ctx.ellipse(5.2, -19.8, 1.6, 2.4, -0.5, 0, Math.PI * 2); ctx.fill();   // ear
+    ctx.beginPath(); ctx.ellipse(5.2, -19.8, 1.6, 2.4, -0.5 - gust * 0.25 - Math.sin(t * 2.3) * gust * 0.12, 0, Math.PI * 2); ctx.fill();   // ear, fluttering in the wind
     ctx.shadowBlur = 0;
     // big white eyes; pupils look ahead, up at the rain, or out at you
     const look = { x: 0.35 * (1 - viewer) - 0.25 * viewer, y: 0.15 - up * 0.9 + viewer * 0.1 };
@@ -564,6 +567,86 @@
     }
   }
 
+  // ───────── wind you can see ─────────
+  //
+  // Sumi-e painters draw wind as long, flowing brush lines. These sweep across the sky from
+  // the right, more of them the stronger the gust, and stay clear of the header text.
+  // In strong gusts a few needles tear off the pines and flutter away.
+
+  let streaks = [];
+  let needles = [];
+
+  function updateWind(dt, gust) {
+    // new wind strokes, mostly in gusts
+    if (streaks.length < 7 && Math.random() < dt * (0.15 + gust * gust * 1.6)) {
+      streaks.push({
+        x: W + 40 + Math.random() * 120,
+        y: H * (0.12 + Math.random() * 0.55),
+        length: W * (0.16 + Math.random() * 0.2),
+        wave: 6 + Math.random() * 12,
+        phase: Math.random() * 6.28,
+        age: 0, life: 4 + Math.random() * 3,
+        width: 0.6 + Math.random() * 0.9,
+        dash: [40 + Math.random() * 90, 6 + Math.random() * 10, 15 + Math.random() * 40, 10 + Math.random() * 18],
+      });
+    }
+    // needles torn from the pines in strong gusts
+    if (gust > 0.62 && needles.length < 24) {
+      for (const tree of PINES) {
+        if (!tree.size || Math.random() > dt * (gust - 0.6) * 9) continue;
+        needles.push({
+          x: tree.baseX + (Math.random() - 0.5) * tree.size * 0.7,
+          y: tree.baseY - tree.size * (0.45 + Math.random() * 0.55),
+          vx: -(60 + Math.random() * 80), vy: 6 + Math.random() * 14,
+          spin: Math.random() * 6.28, age: 0, life: 3 + Math.random() * 2,
+        });
+      }
+    }
+    const speed = 120 + gust * 260;
+    for (const st of streaks) { st.x -= speed * dt; st.age += dt; }
+    streaks = streaks.filter((st) => st.age < st.life && st.x + st.length > -40);
+    for (const n of needles) {
+      n.x += n.vx * (0.5 + gust) * dt; n.y += n.vy * dt + Math.sin(n.age * 5 + n.spin) * 0.4;
+      n.spin += dt * 7; n.age += dt;
+    }
+    needles = needles.filter((n) => n.age < n.life && n.x > -20);
+  }
+
+  function drawWind() {
+    ctx.lineCap = "round";
+    for (const st of streaks) {
+      let a = 0.16 * Math.sin(Math.PI * Math.min(st.age / st.life, 1));
+      if (calm) {
+        const mx = st.x + st.length / 2;
+        const inside = Math.min(mx - calm.left, calm.right - mx, st.y - calm.top, calm.bottom - st.y);
+        a *= 1 - 0.85 * smooth(-40, 40, inside);
+      }
+      if (a < 0.01) continue;
+      ctx.strokeStyle = `rgba(${INK.join(",")},${a.toFixed(3)})`;
+      ctx.lineWidth = st.width;
+      ctx.setLineDash(st.dash);
+      ctx.beginPath();
+      for (let i = 0; i <= 24; i++) {
+        const f = i / 24;
+        const x = st.x + f * st.length;
+        const y = st.y + Math.sin(f * 5 + st.phase) * st.wave * (0.4 + f * 0.6) - f * st.length * 0.04;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    if (needles.length) {
+      ctx.strokeStyle = `rgba(${INK.join(",")},0.55)`;
+      ctx.lineWidth = 0.9;
+      const path = new Path2D();
+      for (const n of needles) {
+        const dx = Math.cos(n.spin) * 3.2, dy = Math.sin(n.spin) * 1.4;
+        path.moveTo(n.x - dx, n.y - dy); path.lineTo(n.x + dx, n.y + dy);
+      }
+      ctx.stroke(path);
+    }
+  }
+
   function drawSplashes(dt) {
     if (!splashes.length) return;
     const path = new Path2D();
@@ -593,11 +676,13 @@
     ctx.setTransform(liveDpr, 0, 0, liveDpr, 0, 0);
 
     const gust = still ? 0.35 : gustAt(t);
+    if (!still) windSoft += (gust - windSoft) * Math.min(1, dt * 0.7);
 
     // the pines bend with the gust, from their base
     if (!still) {
       PINES.forEach((tree, i) => {
-        const bend = tree.sway * (0.25 + gust) + Math.sin(t * 1.6 + i * 1.7) * 0.12 * gust;
+        // a lean that eases with the gust, plus a slow sway (~6 s), the two trees out of step
+        const bend = tree.sway * (0.2 + windSoft * 0.9) + Math.sin(t * 1.05 + i * 1.9) * (0.35 + windSoft * 0.7) * tree.sway * 0.35;
         tree.canvas.style.transform = `skewX(${bend.toFixed(3)}deg)`;
       });
     }
@@ -610,7 +695,7 @@
     const s = (H / 640) * 1.3;
     const wx = u * W;
     const wy = near.ridge(u) * H + 1;
-    drawWalker(wx, wy, s, fade, still ? 0 : t, state, gust);
+    drawWalker(wx, wy, s, fade, still ? 0 : t, state, still ? 0.35 : windSoft);
 
     // rain at several depths, batched into a few paths by thickness and strength
     ctx.lineCap = "round";
@@ -648,6 +733,7 @@
       ctx.stroke(path);
     }
     drawSplashes(still ? 0 : dt);
+    if (!still) { updateWind(dt, gust); drawWind(); }
 
     if (running) raf = requestAnimationFrame(frame);
   }
