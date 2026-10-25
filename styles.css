@@ -207,7 +207,7 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   position: relative;
   isolation: isolate;
   max-width: 560px;
-  text-shadow: 0 0 1px rgba(236, 235, 230, 1), 0 0 8px rgba(236, 235, 230, .95), 0 0 18px rgba(236, 235, 230, .85), 0 0 32px rgba(236, 235, 230, .6);
+  text-shadow: 0 0 1px rgba(236, 235, 230, 1), 0 0 12px rgba(236, 235, 230, .9);
 }
 .hero__copy::before {
   content: "";
@@ -216,6 +216,7 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   z-index: -1;
   background: radial-gradient(closest-side, rgba(236, 235, 230, .96) 0%, rgba(236, 235, 230, .88) 60%, rgba(236, 235, 230, 0) 100%);
   filter: blur(14px);
+  will-change: transform;   /* its own layer: the blur is drawn once, not on every frame of a resize */
   pointer-events: none;
 }
 .hero h1 {
@@ -269,10 +270,8 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   position: absolute; inset: 0; width: 100%; height: 100%;
   display: block;
   opacity: 0;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 140px, #000 calc(100% - 140px), transparent 100%);
-          mask-image: linear-gradient(180deg, transparent 0, #000 140px, #000 calc(100% - 140px), transparent 100%);
+  will-change: transform, opacity;   /* own GPU layers, so resizing only rescales them */
 }
-.colour__paint { will-change: opacity; }
 .colour__grey.is-ready { opacity: .5; }
 .colour__paint.is-ready { opacity: var(--colour); }
 .colour__inner { position: relative; }
@@ -406,6 +405,8 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 .page__date--bottom { align-self: flex-end; }
 
 /* Seals: real impressions, inked through the #hanko filter in index.html */
+/* each on its own GPU layer, so the SVG ink filters run once instead of on every resize */
+.stamp, .seal, .page__wash { will-change: transform; }
 .stamp {
   position: absolute; left: var(--left, 50%); top: var(--top, 50%);
   width: var(--size, 96px); height: var(--size, 96px);
@@ -529,3 +530,4 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   .nav { gap: 20px; }
   .email { font-size: 20px; }
 }
+

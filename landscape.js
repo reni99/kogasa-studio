@@ -4,10 +4,12 @@
 // the ridge and fades down into mist, broken up by brush texture. Pines are built from
 // hundreds of short needle strokes.
 //
-// Each layer (far range, mist, middle range, mist, near hill) gets its own canvas, painted
-// once per size. The parallax is a CSS scroll-driven animation on each layer (see
-// styles.css), and the mist drifts by CSS animation, so nothing static is ever redrawn
-// and no script runs while scrolling. Only the rain and the walker are drawn every frame.
+// Each layer (far range, mist, middle range, mist, near hill) gets its own canvas. The washes
+// are painted on the GPU (landscape-gl.js), fast enough to repaint on every frame of a
+// resize; without WebGL 2 the canvas painting below does it once the resize settles.
+// The parallax is a CSS scroll-driven animation on each layer (see styles.css), and the
+// mist drifts by CSS animation, so nothing static is redrawn while scrolling. Only the
+// rain and the walker are drawn every frame.
 
 (() => {
   const scene = document.querySelector(".landscape");
@@ -31,10 +33,17 @@
     { name: "near", base: 0.83, amp: 0.07, freq: 1.8, octaves: 5, sharp: 1.0, strength: 0.86, falloff: 0.30, edge: 0.75, res: 1.0, blur: 0.3, parallax: 0.04, delay: 0.7 },
   ];
 
+  // The panorama is composed for a wide screen. A narrower one shows a crop of it (see
+  // measure), so the hills keep their width instead of being squeezed together on a phone.
+  const PANORAMA_WIDTH = 1100;
+  const WORLD_WIDTH = 1440;   // brush textures are sized for a header this wide
+  let view = { start: 0, span: 1 };
+
   function makeRidge(layer, seedOffset) {
     const rand = mulberry32(SEED + seedOffset);
     const f = fbm1(rand, layer.octaves);
-    return (u) => {
+    return (screenU) => {
+      const u = view.start + screenU * view.span;
       let n = (f(u * layer.freq + seedOffset) - 0.22) / 0.56;
       n = Math.pow(Math.min(Math.max(n, 0), 1), layer.sharp);
       // keep the left side, behind the headline, quieter: empty space is part of the painting
@@ -93,7 +102,7 @@
   liveWrap.appendChild(live);
   scene.appendChild(liveWrap);
   const ctx = live.getContext("2d");
-  let liveDpr = 1;
+  let liveScale = 1;   // device pixels per CSS px on the live canvas
 
   // ───────── baking ─────────
 
@@ -288,13 +297,138 @@
     o.drawImage(small, 0, 0, target.width, target.height);
   }
 
-  function bake() {
+  // ───────── GPU painting ─────────
+
+  const BRUSHES = { mid: { width: 2.2, alpha: 0.55, seed: SEED + 3 }, near: { width: 3.4, alpha: 0.75, seed: SEED + 6 } };
+  const FOGS = { fog0: { center: 0.62, thickness: 0.07, seed: SEED + 12 }, fog1: { center: 0.78, thickness: 0.06, seed: SEED + 13 } };
+  const table2 = (rand) => Float32Array.from({ length: 128 * 128 }, rand);   // as Ink.noise2 draws it
+  let gpu = null;
+  let ridgeTreeList = [];
+
+  function prepareGpu() {
+    try { gpu = window.InkGL && window.InkGL.create(); } catch (error) { gpu = null; }
+    if (!gpu) return;
+    // the same seeds, in the same order, as the canvas painting
+    for (const layer of LAYERS) {
+      const rand = mulberry32(SEED + layer.name.length * 31);
+      layer.gpu = {
+        res: layer.res, blur: layer.blur, strength: layer.strength, falloff: layer.falloff, edge: layer.edge,
+        wash: gpu.noiseTexture(table2(rand)), wrinkle: gpu.noiseTexture(table2(rand)), grain: gpu.noiseTexture(table2(rand)),
+      };
+      layer.broken = noise1(rand);
+      const brush = BRUSHES[layer.name];
+      if (brush) {
+        const r = mulberry32(brush.seed);
+        brush.gaps = noise1(r); brush.thick = noise1(r);
+      }
+    }
+    for (const fog of Object.values(FOGS)) {
+      const rand = mulberry32(fog.seed);
+      fog.cloud = gpu.noiseTexture(table2(rand)); fog.detail = gpu.noiseTexture(table2(rand));
+    }
+    // the tiny trees on the middle ridge, fixed to the landscape rather than to the screen
+    const rand = mulberry32(SEED + 4);
+    const forest = noise1(rand);
+    for (let x = 0; x < WORLD_WIDTH; x += 3 + rand() * 4) {
+      const u = x / WORLD_WIDTH;
+      if (forest(u * 14) < 0.55 || u < 0.18) continue;
+      ridgeTreeList.push({ u, size: 3 + rand() * 7, alpha: 0.32 + rand() * 0.3 });
+    }
+    gpu.canvas.addEventListener("webglcontextlost", () => { gpu = null; settle(); frame(performance.now()); });
+  }
+
+  let columnData = new Float32Array(0), treeData = new Float32Array(0);
+  function paintGpu() {
+    const columns = Math.ceil(W) + 2;
+    if (columnData.length < columns * 4) {
+      columnData = new Float32Array(columns * 4);
+      treeData = new Float32Array(columns * 4);
+    }
+    const sight = { width: W, height: H, worldStart: view.start * WORLD_WIDTH, worldScale: (view.span * WORLD_WIDTH) / W };
+    const worldX = (x) => sight.worldStart + x * sight.worldScale;
+
+    for (const layer of LAYERS) {
+      const brush = BRUSHES[layer.name];
+      for (let c = 0; c < columns; c++) {
+        const X = worldX(c);
+        columnData[c * 4] = layer.ridge(c / W) * H;
+        columnData[c * 4 + 1] = 0.35 + 0.9 * layer.broken(X / 26);
+        columnData[c * 4 + 2] = brush ? brush.gaps(X / 40) : 0;
+        columnData[c * 4 + 3] = brush ? brush.thick(X / 18) : 0;
+      }
+      let trees = null;
+      if (layer.name === "mid") {
+        trees = treeData;
+        trees.fill(0, 0, columns * 4);
+        for (const tree of ridgeTreeList) {
+          const x = ((tree.u - view.start) / view.span) * W;
+          if (x < 0 || x >= columns - 1) continue;
+          const c = Math.floor(x) * 4;
+          trees[c] = x; trees[c + 1] = tree.size * (H / 700); trees[c + 2] = tree.alpha;
+        }
+      }
+      gpu.paintWash(stack[layer.name].canvas, sight, layer.gpu, columnData, columns, trees, brush);
+    }
+    for (const [key, fog] of Object.entries(FOGS)) gpu.paintFog(stack[key].canvas, { width: W * 1.4, height: H }, fog);
+  }
+
+  // ───────── layout ─────────
+
+  let screenDpr = 1;
+  const dprFor = (item) => Math.min(screenDpr, item.dpr);
+
+  function measure() {
     const rect = scene.getBoundingClientRect();
     W = Math.max(1, Math.round(rect.width));
     H = Math.max(1, Math.round(rect.height));
-    const screenDpr = window.devicePixelRatio || 1;
-    const dprFor = (item) => Math.min(screenDpr, item.dpr);
+    screenDpr = window.devicePixelRatio || 1;
+    view = { span: Math.min(1, W / PANORAMA_WIDTH) };
+    view.start = (1 - view.span) * 0.75;   // lean right, toward the peaks and the pines
 
+    const copy = document.querySelector(".hero__copy");
+    const quiet = copy ? copy.getBoundingClientRect() : null;
+    const pad = 70;
+    calm = quiet ? {
+      left: quiet.left - rect.left - pad, right: quiet.right - rect.left + pad,
+      top: quiet.top - rect.top - pad, bottom: quiet.bottom - rect.top + pad,
+    } : null;
+  }
+
+  // Each pine on its own small canvas, anchored at its base so the wind can bend it.
+  // While resizing it is only moved and scaled; it is repainted once the size settles.
+  function placePines(repaint) {
+    DPR = dprFor(stack.near);
+    const pineScale = Math.min(H / 780, W / 900);
+    for (const tree of PINES) {
+      const h = tree.h * pineScale;
+      const baseX = W * tree.u, baseY = near.ridge(tree.u) * H + 6;
+      Object.assign(tree, { baseX, baseY, size: h });   // where needles can blow from
+      const box = { left: baseX - h * 0.7, top: baseY - h * 1.12, width: h * 1.4, height: h * 1.12 + 14 };
+      const el = tree.canvas;
+      Object.assign(el.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+      if (!repaint || (tree.paintedSize && Math.abs(h / tree.paintedSize - 1) < 0.08 && tree.paintedDpr === DPR)) continue;
+      tree.paintedSize = h; tree.paintedDpr = DPR;
+      el.width = Math.ceil(box.width * DPR); el.height = Math.ceil(box.height * DPR);
+      const o = el.getContext("2d");
+      o.setTransform(DPR, 0, 0, DPR, -box.left * DPR, -box.top * DPR);
+      if (tree.blur) o.filter = `blur(${tree.blur * DPR}px)`;
+      pine(o, baseX, baseY, h, tree.lean, SEED + tree.seed, tree);
+    }
+  }
+
+  // bitmaps at the final size; only once a resize settles, so dragging allocates nothing
+  function sizeCanvases() {
+    for (const item of STACK) {
+      const width = Math.ceil(W * (item.fog ? 1.4 : 1) * dprFor(item)), height = Math.ceil(H * dprFor(item));
+      if (item.canvas.width !== width || item.canvas.height !== height) { item.canvas.width = width; item.canvas.height = height; }
+    }
+    const liveDpr = Math.min(screenDpr, 2);
+    const width = Math.round(W * liveDpr), height = Math.round(H * liveDpr);
+    if (live.width !== width || live.height !== height) { live.width = width; live.height = height; }
+  }
+
+  // the canvas painting, when there is no WebGL 2
+  function paintCpu() {
     DPR = dprFor(stack.far);
     bakeWash(LAYERS[0], stack.far.canvas);
 
@@ -306,39 +440,26 @@
     DPR = dprFor(stack.near);
     const nr = bakeWash(near, stack.near.canvas);
     dryBrushRidge(nr, near, 3.4, 0.75, SEED + 6);
-    const pineScale = Math.min(H / 780, W / 900);
-    // each pine on its own small canvas, anchored at its base so the wind can bend it
-    for (const tree of PINES) {
-      const h = tree.h * pineScale;
-      const baseX = W * tree.u, baseY = near.ridge(tree.u) * H + 6;
-      Object.assign(tree, { baseX, baseY, size: h });   // where needles can blow from
-      const box = { left: baseX - h * 0.7, top: baseY - h * 1.12, width: h * 1.4, height: h * 1.12 + 14 };
-      const el = tree.canvas;
-      Object.assign(el.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
-      el.width = Math.ceil(box.width * DPR); el.height = Math.ceil(box.height * DPR);
-      const o = el.getContext("2d");
-      o.setTransform(DPR, 0, 0, DPR, -box.left * DPR, -box.top * DPR);
-      if (tree.blur) o.filter = `blur(${tree.blur * DPR}px)`;
-      pine(o, baseX, baseY, h, tree.lean, SEED + tree.seed, tree);
-    }
 
     DPR = dprFor(stack.fog0);
     bakeFog(0.62, 0.07, SEED + 12, stack.fog0.canvas);
     bakeFog(0.78, 0.06, SEED + 13, stack.fog1.canvas);
+  }
 
-    liveDpr = Math.min(screenDpr, 2);
-    live.width = Math.round(W * liveDpr);
-    live.height = Math.round(H * liveDpr);
-
-    const copy = document.querySelector(".hero__copy");
-    const quiet = copy ? copy.getBoundingClientRect() : null;
-    const pad = 70;
-    calm = quiet ? {
-      left: quiet.left - rect.left - pad, right: quiet.right - rect.left + pad,
-      top: quiet.top - rect.top - pad, bottom: quiet.bottom - rect.top + pad,
-    } : null;
-
+  // the full paint, at load and once a resize settles
+  function settle() {
+    measure();
+    sizeCanvases();
+    gpu ? paintGpu() : paintCpu();
+    placePines(true);
     makeRain();
+  }
+
+  // every frame while resizing (GPU only): repaint into the current bitmaps, move the pines
+  function track() {
+    measure();
+    paintGpu();
+    placePines(false);
   }
 
   // ───────── rain ─────────
@@ -477,7 +598,7 @@
 
     // wet-ink softness around the silhouette
     ctx.shadowColor = "rgba(20,20,19,0.45)";
-    ctx.shadowBlur = 1.6 * liveDpr;
+    ctx.shadowBlur = 1.6 * liveScale;
 
     // body: hunched back with a little hump, leaning onto the stick with each step
     ctx.save();
@@ -505,7 +626,7 @@
     ctx.rotate(-up * 0.22 - viewer * 0.06);
     ctx.translate(-5.5, 17.5);
     ctx.shadowColor = "rgba(20,20,19,0.45)";
-    ctx.shadowBlur = 1.6 * liveDpr;
+    ctx.shadowBlur = 1.6 * liveScale;
     const k = 0.5523;
     const [hx0, hy0, hrx, hry] = [9, -14.8, 6.2, 5.6];
     ctx.fill(brushedPath([
@@ -704,7 +825,9 @@
     const still = reduceMotion.matches;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, live.width, live.height);
-    ctx.setTransform(liveDpr, 0, 0, liveDpr, 0, 0);
+    // the bitmap may still have its old size while resizing: draw through a matching transform
+    liveScale = live.width / W;
+    ctx.setTransform(live.width / W, 0, 0, live.height / H, 0, 0);
 
     const blow = still ? 0 : blowAt(t);
     const gust = still ? 0.35 : Math.max(gustAt(t), blow * 1.3);
@@ -790,15 +913,26 @@
   const grain = hero.querySelector(".hero__grain");
   if (grain) grain.style.backgroundImage = `url(${paperTile(SEED + 5).toDataURL()})`;
 
-  bake();
+  prepareGpu();
+  settle();
   frame(performance.now());
   scene.classList.add("is-ready");
   play();
 
   let resizeTimer = 0;
+  let settledSize = `${W}x${H}`;
   new ResizeObserver(() => {
+    const rect = scene.getBoundingClientRect();
+    const size = `${Math.max(1, Math.round(rect.width))}x${Math.max(1, Math.round(rect.height))}`;
+    if (size === settledSize && !resizeTimer) return;
+    if (gpu) { track(); if (!running) frame(performance.now()); }
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { bake(); frame(performance.now()); }, 120);
+    resizeTimer = setTimeout(() => {
+      resizeTimer = 0;
+      settle();
+      settledSize = `${W}x${H}`;
+      frame(performance.now());
+    }, gpu ? 200 : 120);
   }).observe(scene);
 
   new IntersectionObserver(([entry]) => (entry.isIntersecting ? play() : pause())).observe(hero);
