@@ -183,6 +183,20 @@
 
     ctx.fillStyle = paperPattern(ctx, SEED + 1);
     ctx.fillRect(0, 0, W, H);
+
+    // fade out at the top and bottom, painted in rather than a CSS mask, which the browser
+    // would have to redraw on every frame of a resize
+    const edge = Math.min(0.5, 140 / H);
+    const fade = ctx.createLinearGradient(0, 0, 0, H);
+    fade.addColorStop(0, "rgba(0,0,0,0)");
+    fade.addColorStop(edge, "rgba(0,0,0,1)");
+    fade.addColorStop(1 - edge, "rgba(0,0,0,1)");
+    fade.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
     paintGrey();
     canvas.classList.add("is-ready");
   }
@@ -212,6 +226,6 @@
     if (width === lastWidth && Math.abs(height - H) < 40) return;
     lastWidth = width;
     clearTimeout(timer);
-    timer = setTimeout(paint, 150);
+    timer = setTimeout(paint, 400);   // once the resize has settled
   }).observe(canvas);
 })();
