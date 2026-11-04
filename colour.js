@@ -207,25 +207,44 @@
     grey.width = canvas.width;
     grey.height = canvas.height;
     const g = grey.getContext("2d");
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const lum = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11;
-      d[i] = d[i + 1] = d[i + 2] = lum;
-    }
-    g.putImageData(img, 0, 0);
+    g.filter = "grayscale(1)";
+    g.drawImage(canvas, 0, 0);
+    g.filter = "none";
     grey.classList.add("is-ready");
   }
 
-  paint();
-  let timer = 0;
-  let lastWidth = W;
-  new ResizeObserver(() => {
-    const width = Math.round(canvas.getBoundingClientRect().width);
-    const height = Math.round(canvas.getBoundingClientRect().height);
-    if (width === lastWidth && Math.abs(height - H) < 40) return;
-    lastWidth = width;
-    clearTimeout(timer);
-    timer = setTimeout(paint, 400);   // once the resize has settled
-  }).observe(canvas);
+  // The section starts well below the fold, so the painting can wait: doing it during load
+  // would block the first render of the header and the first clicks. It is painted when the
+  // section comes near the viewport, or in idle time after load, whichever comes first.
+  let painted = false;
+  function firstPaint() {
+    if (painted) return;
+    painted = true;
+    paint();
+    let timer = 0;
+    let lastWidth = W;
+    new ResizeObserver(() => {
+      const width = Math.round(canvas.getBoundingClientRect().width);
+      const height = Math.round(canvas.getBoundingClientRect().height);
+      if (width === lastWidth && Math.abs(height - H) < 40) return;
+      lastWidth = width;
+      clearTimeout(timer);
+      timer = setTimeout(paint, 400);   // once the resize has settled
+    }).observe(canvas);
+  }
+
+  if ("IntersectionObserver" in window) {
+    const watcher = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      watcher.disconnect();
+      firstPaint();
+    }, { rootMargin: "150% 0px" });
+    watcher.observe(canvas);
+    window.addEventListener("load", () => {
+      if ("requestIdleCallback" in window) requestIdleCallback(firstPaint, { timeout: 4000 });
+      else setTimeout(firstPaint, 1500);
+    });
+  } else {
+    firstPaint();
+  }
 })();
