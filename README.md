@@ -19,10 +19,30 @@ Then open http://localhost:8000. Opening `index.html` directly also works.
 - `landscape-gl.js` – the header's ink washes and mist as WebGL shaders, fast enough to repaint on every frame of a resize (the canvas painting in `landscape.js` is the fallback)
 - `colour.js` – the colour painting behind the stamp book: watercolour blooms, plum branch, gold leaf
 - `main.js` – grey-to-colour fade, stamps pressing in, copy button, and the scroll fallback for browsers without scroll-driven animations
-- `assets/` – FoilFold icon and favicon
+- `assets/` – FoilFold icon, favicon and the fonts
+- `tools/subset-fonts.sh` – rebuilds `assets/fonts/`
 
 The paintings are seeded: change `SEED` in `landscape.js` or `colour.js` to repaint with a
 different composition in the same style.
+
+## Fonts
+
+Zen Old Mincho, Zen Kaku Gothic New and Yuji Boku are served from `assets/fonts/` rather
+than from Google. A Japanese family is hundreds of unicode-range subsets, so asking Google
+for three of them took about fifty requests and a megabyte before the text could settle;
+these carry the Latin alphabet and only the Japanese characters the page writes, and come
+to roughly 230 KB in total.
+
+**Write a Japanese character the page has not used before and it will fall back to the
+system serif until the fonts are rebuilt:**
+
+```sh
+pip install fonttools brotli   # once
+tools/subset-fonts.sh
+```
+
+The script reads the characters straight out of `index.html`, so it needs no list kept in
+step. All three families are under the SIL Open Font License (`assets/fonts/OFL-*.txt`).
 
 ## Adding an app
 

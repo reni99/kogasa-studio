@@ -2,6 +2,41 @@
    Layout: an ink-wash landscape header with the studio name written vertically over it,
    then the stamp book (one page and seal per app), the eight principles and contact. */
 
+/* The three families, served from here rather than from Google: a Japanese family is
+   hundreds of unicode-range subsets, and asking for three of them cost about fifty
+   requests before any text could settle. These are cut down to the Latin alphabet and
+   the Japanese this page actually writes (tools/subset-fonts.sh rebuilds them; run it
+   after adding a Japanese character the page did not use before). Licensed under the
+   SIL Open Font License, see assets/fonts/OFL-*.txt. */
+@font-face {
+  font-family: "Zen Old Mincho"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(assets/fonts/zen-old-mincho-400.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Zen Old Mincho"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(assets/fonts/zen-old-mincho-700.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Zen Old Mincho"; font-style: normal; font-weight: 900; font-display: swap;
+  src: url(assets/fonts/zen-old-mincho-900.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Zen Kaku Gothic New"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(assets/fonts/zen-kaku-gothic-new-400.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Zen Kaku Gothic New"; font-style: normal; font-weight: 500; font-display: swap;
+  src: url(assets/fonts/zen-kaku-gothic-new-500.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Zen Kaku Gothic New"; font-style: normal; font-weight: 700; font-display: swap;
+  src: url(assets/fonts/zen-kaku-gothic-new-700.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Yuji Boku"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url(assets/fonts/yuji-boku-400.woff2) format("woff2");
+}
+
 :root {
   --paper: #ECEBE6;
   --page: #F6F5F0;
