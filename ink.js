@@ -15,8 +15,16 @@ window.Ink = (() => {
     return t * t * (3 - 2 * t);
   };
 
+  // Float32Array.from over an array-like goes the long way round, through an iterator, for
+  // about twice what filling the array in place costs. These tables are drawn by the dozen.
+  function randomTable(length, rand) {
+    const v = new Float32Array(length);
+    for (let i = 0; i < length; i++) v[i] = rand();
+    return v;
+  }
+
   function noise1(rand, size = 256) {
-    const v = Float32Array.from({ length: size }, rand);
+    const v = randomTable(size, rand);
     return (x) => {
       const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
       const a = v[((i % size) + size) % size], b = v[(((i + 1) % size) + size) % size];
@@ -34,7 +42,7 @@ window.Ink = (() => {
   }
 
   function noise2(rand, size = 128) {
-    const g = Float32Array.from({ length: size * size }, rand);
+    const g = randomTable(size * size, rand);
     return (x, y) => {
       const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
       const x0 = ((xi % size) + size) % size, y0 = ((yi % size) + size) % size;
@@ -91,5 +99,5 @@ window.Ink = (() => {
     return ctx.createPattern(paperTile(seed), "repeat");
   }
 
-  return { mulberry32, smooth, noise1, fbm1, noise2, paperTile, paperPattern };
+  return { mulberry32, smooth, randomTable, noise1, fbm1, noise2, paperTile, paperPattern };
 })();

@@ -23,7 +23,7 @@
   const PAPER = [236, 235, 230];
   const SEED = 1729;
 
-  const { mulberry32, smooth, noise1, fbm1, noise2, paperTile } = window.Ink;
+  const { mulberry32, smooth, randomTable, noise1, fbm1, noise2, paperTile } = window.Ink;
 
   // ───────── scene description (fractions of width / height) ─────────
 
@@ -314,7 +314,7 @@
 
   const BRUSHES = { mid: { width: 2.2, alpha: 0.55, seed: SEED + 3 }, near: { width: 3.4, alpha: 0.75, seed: SEED + 6 } };
   const FOGS = { fog0: { center: 0.62, thickness: 0.07, seed: SEED + 12 }, fog1: { center: 0.78, thickness: 0.06, seed: SEED + 13 } };
-  const table2 = (rand) => Float32Array.from({ length: 128 * 128 }, rand);   // as Ink.noise2 draws it
+  const table2 = (rand) => randomTable(128 * 128, rand);   // as Ink.noise2 draws it
   let gpu = null;
   let ridgeTreeList = [];
 
