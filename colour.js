@@ -10,7 +10,10 @@
   const grey = document.querySelector(".colour__grey");
   if (!canvas || !canvas.getContext || !window.Ink) return;
   const { mulberry32, smooth, noise2, paperPattern } = window.Ink;
-  const ctx = canvas.getContext("2d");
+  // Painted on a canvas of its own and shown in one piece when it is finished: the painting
+  // is spread over many small tasks, and a repaint should not blank the section meanwhile.
+  const work = document.createElement("canvas");
+  const ctx = work.getContext("2d");
   const SEED = 2718;
   const PAPER = [236, 235, 230];
 
@@ -27,7 +30,13 @@
 
   let W = 0, H = 0, DPR = 1;
 
-  function bloom(b, index) {
+  // The painting takes over a second in one go, long enough to swallow a click. It is cut
+  // into small tasks instead: each one yields to the browser, and `stale` abandons a run
+  // when a resize has started a newer one.
+  let painting = 0;
+  const breathe = () => new Promise((resolve) => setTimeout(resolve));
+
+  async function bloom(b, index, stale) {
     const unit = Math.sqrt(W * H) * 0.9;
     const R = b.r * unit;
     const res = 0.25;
@@ -37,6 +46,10 @@
     const img = new ImageData(size, size);
     const c = size / 2;
     for (let y = 0; y < size; y++) {
+      if (y % 96 === 95) {
+        await breathe();
+        if (stale()) return;
+      }
       for (let x = 0; x < size; x++) {
         const dx = (x - c) / res, dy = (y - c) / res;
         const dist = Math.hypot(dx, dy);
@@ -138,7 +151,9 @@
       if (depth > 0) grow(end.x, end.y, ang + (rand() - 0.5) * 0.6, len * 0.7, width * 0.7, depth - 1);
     }
     grow(W + 10, H * 0.015, Math.PI * 0.86, 260 * s, 15 * s, 3);
-    for (const f of flowers) blossom(f.x, f.y, (f.open ? 9 + rand() * 5 : 6) * s, rand, f.open);
+    return () => {
+      for (const f of flowers) blossom(f.x, f.y, (f.open ? 9 + rand() * 5 : 6) * s, rand, f.open);
+    };
   }
 
   function goldLeaf(rand) {
@@ -164,25 +179,39 @@
     }
   }
 
-  function paint() {
+  async function paint() {
+    const run = ++painting;
+    const stale = () => run !== painting;
     const rect = canvas.getBoundingClientRect();
     W = Math.max(1, Math.round(rect.width));
     H = Math.max(1, Math.round(rect.height));
     DPR = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(W * DPR);
-    canvas.height = Math.round(H * DPR);
+    work.width = Math.round(W * DPR);
+    work.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
     ctx.fillStyle = `rgb(${PAPER.join(",")})`;
     ctx.fillRect(0, 0, W, H);
-    BLOOMS.forEach(bloom);
+    for (let i = 0; i < BLOOMS.length; i++) {
+      await bloom(BLOOMS[i], i, stale);
+      if (stale()) return;
+      await breathe();
+      if (stale()) return;
+    }
 
     const rand = mulberry32(SEED);
-    plumBranch(rand);
+    const openBlossoms = plumBranch(rand);
+    await breathe();
+    if (stale()) return;
+    openBlossoms();
+    await breathe();
+    if (stale()) return;
     goldLeaf(rand);
 
     ctx.fillStyle = paperPattern(ctx, SEED + 1);
     ctx.fillRect(0, 0, W, H);
+    await breathe();
+    if (stale()) return;
 
     // fade out at the top and bottom, painted in rather than a CSS mask, which the browser
     // would have to redraw on every frame of a resize
@@ -197,18 +226,21 @@
     ctx.fillStyle = fade;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
-    paintGrey();
-    canvas.classList.add("is-ready");
+    show();
   }
 
-  // The same painting without colour: the rainy state the section fades in from.
-  function paintGrey() {
+  // Hand the finished painting over, in colour and in grey: the rainy state it fades in from.
+  function show() {
+    canvas.width = work.width;
+    canvas.height = work.height;
+    canvas.getContext("2d").drawImage(work, 0, 0);
+    canvas.classList.add("is-ready");
     if (!grey) return;
-    grey.width = canvas.width;
-    grey.height = canvas.height;
+    grey.width = work.width;
+    grey.height = work.height;
     const g = grey.getContext("2d");
     g.filter = "grayscale(1)";
-    g.drawImage(canvas, 0, 0);
+    g.drawImage(work, 0, 0);
     g.filter = "none";
     grey.classList.add("is-ready");
   }
