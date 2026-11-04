@@ -197,8 +197,12 @@
     o.beginPath(); o.ellipse(cx, cy + ry * 0.2, rx * 1.05, ry * 1.1, 0, 0, Math.PI * 2); o.fill();
     o.restore();
 
+    // A pad holds thousands of needles but only a few dozen weights of ink among them:
+    // they are gathered by width and strength and each group laid down as one stroke,
+    // the same way the rain is drawn below. Thousands of brush touches, a few dozen passes.
     o.lineCap = "round";
     const count = Math.round(rx * ry * 0.55 * density);
+    const bundles = new Map();
     for (let i = 0; i < count; i++) {
       const ang = rand() * Math.PI * 2, r = Math.sqrt(rand());
       const px = cx + Math.cos(ang) * rx * r;
@@ -207,9 +211,18 @@
       const dir = (rand() - 0.5) * Math.PI * 0.85 + (rand() < 0.5 ? 0 : Math.PI) - 0.25;
       const under = py > cy ? 1.2 : 0.8;
       const a = (0.16 + 0.42 * (1 - r * 0.55)) * under;
-      o.strokeStyle = `rgba(${INK.join(",")},${(Math.min(a, 0.85) * tone).toFixed(3)})`;
-      o.lineWidth = (0.7 + rand() * 0.9) * scale;
-      o.beginPath(); o.moveTo(px, py); o.lineTo(px + Math.cos(dir) * len, py + Math.sin(dir) * len * 0.55); o.stroke();
+      const ink = Math.round((Math.min(a, 0.85) * tone) / 0.025);
+      const weight = Math.round((0.7 + rand() * 0.9) / 0.3);
+      const key = ink * 8 + weight;
+      let bundle = bundles.get(key);
+      if (!bundle) bundles.set(key, bundle = { alpha: ink * 0.025, width: weight * 0.3 * scale, path: new Path2D() });
+      bundle.path.moveTo(px, py);
+      bundle.path.lineTo(px + Math.cos(dir) * len, py + Math.sin(dir) * len * 0.55);
+    }
+    for (const bundle of bundles.values()) {
+      o.strokeStyle = `rgba(${INK.join(",")},${bundle.alpha.toFixed(3)})`;
+      o.lineWidth = bundle.width;
+      o.stroke(bundle.path);
     }
   }
 
@@ -446,13 +459,23 @@
     bakeFog(0.78, 0.06, SEED + 13, stack.fog1.canvas);
   }
 
-  // the full paint, at load and once a resize settles
-  function settle() {
+  // the washes: the five stacked layers, which is all the header needs to look like itself
+  function paintWashes() {
     measure();
     sizeCanvases();
     gpu ? paintGpu() : paintCpu();
+  }
+
+  // the pines and the rain, which cost more and are wanted later
+  function paintForeground() {
     placePines(true);
     makeRain();
+  }
+
+  // the full paint, at load and once a resize settles
+  function settle() {
+    paintWashes();
+    paintForeground();
   }
 
   // every frame while resizing (GPU only): repaint into the current bitmaps, move the pines
@@ -909,15 +932,31 @@
   }
   function pause() { running = false; cancelAnimationFrame(raf); }
 
-  // washi grain sits over the painting as a static layer, so it is never redrawn
+  // Washi grain sits over the painting as a static layer, so it is never redrawn. Encoding
+  // the tile is tens of milliseconds of work: toBlob does it away from the main thread,
+  // where toDataURL would do it here and hold up the first frame.
   const grain = hero.querySelector(".hero__grain");
-  if (grain) grain.style.backgroundImage = `url(${paperTile(SEED + 5).toDataURL()})`;
+  if (grain) {
+    const tile = paperTile(SEED + 5);
+    const show = (url) => (grain.style.backgroundImage = `url(${url})`);
+    tile.toBlob ? tile.toBlob((blob) => show(URL.createObjectURL(blob))) : show(tile.toDataURL());
+  }
 
+  // The washes are what the header is; the pines do not begin to fade in for another 0.7s
+  // and the rain not for 1.1s (the transition delays above), so painting them in this first
+  // task would be work spent on things nobody can see yet. They follow once the washes are
+  // on screen — except for a visitor who asked for less motion, who gets no fade to wait
+  // through and so should not be made to wait at all.
   prepareGpu();
-  settle();
-  frame(performance.now());
+  paintWashes();
   scene.classList.add("is-ready");
-  play();
+
+  function begin() {
+    paintForeground();
+    frame(performance.now());
+    play();
+  }
+  reduceMotion.matches ? begin() : requestAnimationFrame(() => setTimeout(begin));
 
   let resizeTimer = 0;
   let settledSize = `${W}x${H}`;

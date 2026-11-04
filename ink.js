@@ -45,17 +45,34 @@ window.Ink = (() => {
     };
   }
 
-  // Washi grain: speckles and short fibres on a 384px tile.
+  // Washi grain: speckles and short fibres on a 384px tile. Nine thousand speckles, but only
+  // a few dozen weights of ink among them: they are grouped by tone and laid down as a few
+  // dozen fills rather than one each, the same trick the rain uses. Tiles are kept once made,
+  // since both the header and the colour section ask for theirs more than once.
+  const tiles = new Map();
   function paperTile(seed) {
+    const kept = tiles.get(seed);
+    if (kept) return kept;
     const size = 384;
     const out = document.createElement("canvas");
     out.width = size; out.height = size;
     const o = out.getContext("2d");
     const rand = mulberry32(seed);
+    const specks = new Map();
     for (let i = 0; i < 9000; i++) {
       const dark = rand() < 0.55;
-      o.fillStyle = dark ? `rgba(27,27,26,${(rand() * 0.05).toFixed(3)})` : `rgba(255,255,250,${(rand() * 0.12).toFixed(3)})`;
-      o.fillRect(rand() * size, rand() * size, 1, 1);
+      const alpha = rand() * (dark ? 0.05 : 0.12);
+      const x = rand() * size, y = rand() * size;
+      const level = Math.round(alpha / 0.005);
+      if (!level) continue;                       // too faint to leave a mark
+      const key = (dark ? 0 : 64) + level;
+      let speck = specks.get(key);
+      if (!speck) specks.set(key, speck = { dark, alpha: level * 0.005, path: new Path2D() });
+      speck.path.rect(x, y, 1, 1);
+    }
+    for (const speck of specks.values()) {
+      o.fillStyle = `rgba(${speck.dark ? "27,27,26" : "255,255,250"},${speck.alpha.toFixed(3)})`;
+      o.fill(speck.path);
     }
     o.lineCap = "round";
     for (let i = 0; i < 260; i++) {
@@ -66,6 +83,7 @@ window.Ink = (() => {
       o.quadraticCurveTo(x + Math.cos(ang) * len * 0.5 + (rand() - 0.5) * 4, y + Math.sin(ang) * len * 0.5 + (rand() - 0.5) * 4, x + Math.cos(ang) * len, y + Math.sin(ang) * len);
       o.stroke();
     }
+    tiles.set(seed, out);
     return out;
   }
 
