@@ -233,6 +233,13 @@ window.InkGL = (() => {
     const trees = floatTexture(1, 1, new Float32Array(4), 4);
     const noTrees = floatTexture(1, 1, new Float32Array(4), 4);
 
+    // Both targets below only ever grow, and they grow in steps: handing back a buffer that
+    // is already big enough is free, while actually resizing one costs seconds once the page
+    // holds this many large canvases. The header settles a few dozen pixels taller after the
+    // fonts land, which on its own used to be enough to pay for a resize.
+    const STEP = 512;
+    const step = (value) => Math.ceil(value / STEP) * STEP;
+
     // the density pass renders into this; it only grows, so resizing allocates nothing
     const density = { texture: gl.createTexture(), fbo: gl.createFramebuffer(), width: 0, height: 0 };
     gl.bindTexture(gl.TEXTURE_2D, density.texture);
@@ -242,8 +249,8 @@ window.InkGL = (() => {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     function densityTarget(width, height) {
       if (width > density.width || height > density.height) {
-        density.width = Math.max(width, density.width);
-        density.height = Math.max(height, density.height);
+        density.width = step(Math.max(width, density.width));
+        density.height = step(Math.max(height, density.height));
         gl.bindTexture(gl.TEXTURE_2D, density.texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, density.width, density.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, density.fbo);
@@ -256,8 +263,8 @@ window.InkGL = (() => {
     // the drawing buffer only grows too
     function screenTarget(width, height) {
       if (width > canvas.width || height > canvas.height) {
-        canvas.width = Math.max(width, canvas.width);
-        canvas.height = Math.max(height, canvas.height);
+        canvas.width = step(Math.max(width, canvas.width));
+        canvas.height = step(Math.max(height, canvas.height));
       }
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, width, height);
