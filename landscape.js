@@ -61,10 +61,12 @@
     { u: 0.84, h: 360, lean: -0.18, seed: 8, density: 1.5, pad: 1.2, trunk: 1.15, sway: 2.8 },
   ];
 
-  // The stack, back to front. The mountain layers are stored at retina density (they are
-  // painted once, so this costs memory, not frame time); the heavily blurred mist doesn't need it.
+  // The stack, back to front. A layer this size is twenty megabytes, so retina density is
+  // spent only where it shows: on the two near ranges, which carry the dry-brush ridges.
+  // The far range is blurred well past the point where the extra pixels are visible, and
+  // the heavily blurred mist needs them even less.
   const STACK = [
-    { key: "far",  parallax: 0.18, dpr: 2,   delay: 0 },
+    { key: "far",  parallax: 0.18, dpr: 1,   delay: 0 },
     { key: "fog0", parallax: 0.14, dpr: 1,   delay: 0.2, fog: true },
     { key: "mid",  parallax: 0.10, dpr: 2,   delay: 0.35 },
     { key: "fog1", parallax: 0.07, dpr: 1,   delay: 0.5, fog: true },

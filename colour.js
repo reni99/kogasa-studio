@@ -235,14 +235,26 @@
     canvas.height = work.height;
     canvas.getContext("2d").drawImage(work, 0, 0);
     canvas.classList.add("is-ready");
-    if (!grey) return;
-    grey.width = work.width;
-    grey.height = work.height;
-    const g = grey.getContext("2d");
-    g.filter = "grayscale(1)";
-    g.drawImage(work, 0, 0);
-    g.filter = "none";
-    grey.classList.add("is-ready");
+    // The grey copy is only ever glimpsed. It lies at half opacity under the colour one, and
+    // by the time the section fills the screen --colour has reached 1 and the colour canvas
+    // covers it entirely (see the ramp in main.js); at its most visible, with the section
+    // sliding up past the bottom edge, about a tenth of it shows through. Half the
+    // resolution is more than enough for that, and saves three quarters of a bitmap as tall
+    // as the whole section.
+    if (grey) {
+      grey.width = Math.round(work.width / 2);
+      grey.height = Math.round(work.height / 2);
+      const g = grey.getContext("2d");
+      g.filter = "grayscale(1)";
+      g.imageSmoothingQuality = "high";
+      g.drawImage(work, 0, 0, grey.width, grey.height);
+      g.filter = "none";
+      grey.classList.add("is-ready");
+    }
+    // The scratch copy is as tall as the whole section — tens of megabytes that nothing
+    // reads again, since the next repaint sizes it afresh. Let go of it rather than hold
+    // a third copy of the painting for as long as the page is open.
+    work.width = work.height = 0;
   }
 
   // The section starts well below the fold, so the painting can wait: doing it during load
