@@ -19,6 +19,7 @@ Then open http://localhost:8000. Opening `index.html` directly also works.
 - `landscape-gl.js` – the header's ink washes and mist as WebGL shaders, fast enough to repaint on every frame of a resize (the canvas painting in `landscape.js` is the fallback)
 - `colour.js` – the colour painting behind the stamp book: watercolour blooms, plum branch, gold leaf
 - `main.js` – grey-to-colour fade, stamps pressing in, copy button, and the scroll fallback for browsers without scroll-driven animations
+- `legal/` – legal notice (Impressum) and the website's own privacy policy
 - `habtap/`, `byebyebytes/` – one page per app: its stamp-book chapter, what it does, and its privacy policy (`#privacy`, the URL for App Store Connect)
 - `assets/` – app icons, screenshots (`assets/<app>/`), favicon and the fonts
 - `tools/subset-fonts.sh` – rebuilds `assets/fonts/`
