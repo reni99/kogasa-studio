@@ -10,6 +10,7 @@ let ticking = false;
 
 function updateScroll() {
   ticking = false;
+  if (!hero) return;   // the app pages have no header painting
   const limit = hero.offsetHeight;
   const y = Math.min(Math.max(window.scrollY, 0), limit);
   hero.style.setProperty("--scroll", y.toFixed(1));

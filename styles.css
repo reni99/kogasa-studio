@@ -368,7 +368,7 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 .chapter--next .chapter__title { color: var(--ink-3); }
 .chapter__name { display: flex; align-items: center; gap: 16px; margin: 14px 0 18px; }
 .chapter__name img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 10px 22px -12px rgba(27, 27, 26, .55); }
-.chapter__name h3 { margin: 0; font-weight: 900; font-size: clamp(30px, 3.2vw, 40px); line-height: 1.1; }
+.chapter__name h1, .chapter__name h3 { margin: 0; font-weight: 900; font-size: clamp(30px, 3.2vw, 40px); line-height: 1.1; }
 .chapter__kind { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
 .chapter__pitch { margin: 0 0 20px; font-size: 18px; color: var(--ink-2); max-width: 44ch; }
 .chapter__features { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 10px; }
@@ -376,7 +376,7 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 .chapter__features li::before {
   content: ""; position: absolute; left: 2px; top: .62em;
   width: 10px; height: 10px; border-radius: 2px;
-  background: var(--gold); transform: rotate(45deg); opacity: .85;
+  background: var(--accent, var(--gold)); transform: rotate(45deg); opacity: .85;
 }
 .chapter__features strong { color: var(--ink); font-weight: 700; }
 .chapter__platforms { margin: 0 0 24px; font-size: 13px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
@@ -391,6 +391,8 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 }
 .store-badge span { display: flex; flex-direction: column; line-height: 1.15; font-weight: 700; font-size: 17px; }
 .store-badge small { font-weight: 400; font-size: 11px; letter-spacing: .02em; }
+a.store-badge { opacity: 1; cursor: pointer; text-decoration: none; transition: background-color .25s; }
+a.store-badge:hover { color: var(--paper); background: var(--accent, var(--seal)); }
 .chapter__link { font-weight: 500; text-decoration: none; }
 .chapter__link:hover { text-decoration: underline; }
 
@@ -507,6 +509,57 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 }
 .copy:hover { border-color: var(--ink); color: var(--ink); }
 .footer__meta { margin: 0; font-size: 14px; color: var(--muted); }
+.footer__meta a { color: var(--muted); }
+.footer__meta a:hover { color: var(--seal); }
+
+/* ───────────── App pages ─────────────
+   One page per app (habtap/, byebyebytes/): its stamp-book chapter as the header card,
+   what it does, and its privacy policy. --accent and --hue are set on <body>. */
+
+.app-page { background: var(--paper) radial-gradient(1100px 520px at 78% -120px, color-mix(in srgb, var(--hue) 22%, transparent), transparent 70%) no-repeat; }
+.app-page .content { max-width: 1240px; margin-inline: auto; padding: 0 var(--gutter) 72px; }
+.appbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 32px 48px; }
+.app-page .wordmark .seal { display: grid; }
+/* more room for the screenshots than in the stamp book */
+.app-page .chapter--app { grid-template-columns: clamp(170px, 17vw, 220px) minmax(0, 1fr) minmax(0, 1.25fr); }
+.app-page .phone { width: 40%; }
+
+.app-section { margin-top: 96px; scroll-margin-top: 24px; }
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 48px; margin: 0; padding: 0; list-style: none; }
+.feature { padding-top: 22px; border-top: 1px solid var(--line); }
+.feature h3 { position: relative; margin: 0 0 8px; padding-left: 26px; font-weight: 700; font-size: 21px; line-height: 1.35; }
+.feature h3::before {
+  content: ""; position: absolute; left: 2px; top: .5em;
+  width: 10px; height: 10px; border-radius: 2px;
+  background: var(--accent); transform: rotate(45deg); opacity: .85;
+}
+.feature p { margin: 0; color: var(--ink-3); }
+
+/* Privacy policy: the short version on a sheet of paper, then the full text in one column */
+.policy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 40px clamp(40px, 6vw, 96px); align-items: start; }
+.policy__summary {
+  position: sticky; top: 32px;
+  padding: 28px 28px 30px;
+  background: var(--page);
+  border: 1px solid #D3D0C6; border-radius: 4px;
+  box-shadow: 0 1px 0 #CFCCC2, 0 30px 60px -36px rgba(27, 27, 26, .45);
+}
+.policy__summary h2 { margin: 10px 0 14px; font-weight: 900; font-size: clamp(30px, 3.2vw, 40px); line-height: 1.15; }
+.policy__summary > p { margin: 0 0 18px; font-size: 18px; color: var(--ink-2); }
+.policy__summary ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.policy__summary li { position: relative; padding-left: 26px; color: var(--ink-3); }
+.policy__summary li::before { content: "✓"; position: absolute; left: 2px; color: var(--accent); font-weight: 700; }
+.policy__summary .policy__updated { margin: 18px 0 0; font-size: 14px; color: var(--muted); }
+.policy__body { max-width: 66ch; }
+.policy__body h3 { margin: 40px 0 10px; font-weight: 700; font-size: 22px; line-height: 1.35; }
+.policy__body h3:first-child { margin-top: 0; }
+.policy__body p, .policy__body ul { margin: 0 0 14px; color: var(--ink-3); }
+.policy__body ul { padding-left: 22px; }
+.policy__body li { margin-bottom: 6px; }
+.policy__body strong { color: var(--ink); }
+.policy__body a { color: var(--accent); }
+
+.app-page .footer { margin-top: 104px; }
 
 /* ───────────── Motion ───────────── */
 
@@ -545,6 +598,7 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 @media (max-width: 1180px) {
   .chapter--app { grid-template-columns: clamp(170px, 20vw, 220px) minmax(0, 1fr); }
   .chapter--app .chapter__phones { grid-column: 1 / -1; max-width: 640px; justify-self: center; width: 100%; }
+  .app-page .chapter--app { grid-template-columns: clamp(170px, 20vw, 220px) minmax(0, 1fr); }
 }
 
 @media (max-width: 900px) {
@@ -554,9 +608,17 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   .content { padding-left: var(--gutter); }
   .colour { margin-left: calc(-1 * var(--gutter)); padding-left: var(--gutter); padding-top: 112px; }
   .manifesto { margin-bottom: 72px; }
-  .chapter, .chapter--app { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .chapter, .chapter--app, .app-page .chapter--app { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .chapter .sheet { width: min(220px, 62%); }
   .tenets { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .policy { grid-template-columns: minmax(0, 1fr); }
+  .policy__summary { position: static; }
+}
+
+@media (max-width: 600px) {
+  .features { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .appbar { padding-block: 24px 32px; }
 }
 
 @media (max-width: 480px) {

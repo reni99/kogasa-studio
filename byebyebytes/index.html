@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ByeByeBytes · Kogasa Studio</title>
+  <meta name="description" content="ByeByeBytes tidies up your iPhone camera roll with a simple swipe. Your photos never leave your iPhone, and nothing is collected.">
+  <meta name="theme-color" content="#ECEBE6">
+  <meta property="og:title" content="ByeByeBytes · Kogasa Studio">
+  <meta property="og:description" content="Swipe left to delete, right to keep. Tidy up your camera roll, entirely on your iPhone.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/zen-old-mincho-900.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../assets/fonts/zen-kaku-gothic-new-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="../styles.css">
+  <script>document.documentElement.classList.add("js");</script>
+  <script src="../main.js" defer></script>
+</head>
+<body class="app-page" style="--accent: #4B4597; --hue: #6A63B8">
+  <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <filter id="hanko" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.55" result="speck"/>
+      <feComposite in="SourceGraphic" in2="speck" operator="in" result="worn"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="11" result="blotch"/>
+      <feColorMatrix in="blotch" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.3 0.2" result="density"/>
+      <feComposite in="worn" in2="density" operator="in" result="inked"/>
+      <feTurbulence type="turbulence" baseFrequency="0.06" numOctaves="2" seed="7" result="warp"/>
+      <feDisplacementMap in="inked" in2="warp" scale="3.5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="bleed" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="5" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="16" xChannelSelector="R" yChannelSelector="G" result="edge"/>
+      <feGaussianBlur in="edge" stdDeviation="1.6"/>
+    </filter>
+  </svg>
+  <a class="skip" href="#privacy">Skip to the privacy policy</a>
+
+  <div class="content">
+    <header class="appbar">
+      <a class="wordmark" href="../"><span class="seal seal--sm" aria-hidden="true">小傘</span>Kogasa Studio</a>
+      <nav class="nav" aria-label="Main">
+        <a href="../#apps">Apps</a>
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </header>
+
+    <main>
+      <article class="chapter chapter--app" aria-labelledby="app-title">
+        <figure class="sheet" style="--hue: #6A63B8; --tilt: 1.3deg">
+          <div class="page" aria-hidden="true">
+            <svg class="page__wash" viewBox="0 0 110 160" preserveAspectRatio="none">
+              <g filter="url(#bleed)">
+                <ellipse cx="58" cy="96" rx="40" ry="44"/>
+                <ellipse cx="34" cy="34" rx="22" ry="18"/>
+              </g>
+            </svg>
+            <span class="page__title page__title--long">バイバイバイツ</span>
+            <span class="stamp" style="--r: 3deg; --top: 42%; --stamp: #4B4597"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)"><rect x="3" y="3" width="94" height="94" rx="5" fill="currentColor"/><text x="50" y="54" text-anchor="middle" dominant-baseline="central" font-size="68" fill="#F6F5F0">掃</text></g></svg></span>
+            <span class="stamp stamp--mark" style="--r: -6deg; --top: 80%; --left: 30%; --delay: .35s"><svg class="seal-svg" viewBox="0 0 100 100"><g filter="url(#hanko)" fill="currentColor"><circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-size="30">小</text><text x="50" y="66" text-anchor="middle" dominant-baseline="central" font-size="30">傘</text></g></svg></span>
+            <span class="page__date page__date--top">令和七年</span>
+          </div>
+        </figure>
+        <div class="chapter__text">
+          <p class="eyebrow"><span class="chapter__num" lang="ja">掃</span> sō · to sweep</p>
+          <div class="chapter__name">
+            <img src="../assets/byebyebytes-icon.png" alt="" width="64" height="64">
+            <div>
+              <h1 id="app-title">ByeByeBytes</h1>
+              <p class="chapter__kind">Photo library cleaner</p>
+            </div>
+          </div>
+          <p class="chapter__pitch">Tidy up your camera roll with a simple swipe: left to delete, right to keep. A few minutes at a time, and you see how much space you got back. Everything happens on your iPhone.</p>
+          <p class="chapter__platforms">iPhone · Free</p>
+          <div class="chapter__actions">
+            <a class="store-badge" href="https://apps.apple.com/app/id6748582532">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M16.37 12.62c-.03-2.6 2.13-3.86 2.22-3.92-1.21-1.77-3.09-2.01-3.76-2.04-1.6-.16-3.12.94-3.94.94-.81 0-2.06-.92-3.39-.89-1.74.03-3.35 1.01-4.25 2.57-1.81 3.14-.46 7.79 1.3 10.34.86 1.24 1.89 2.64 3.23 2.59 1.3-.05 1.79-.84 3.36-.84 1.56 0 2.01.84 3.38.81 1.4-.02 2.28-1.27 3.13-2.52.99-1.44 1.39-2.84 1.42-2.91-.03-.01-2.72-1.04-2.75-4.13zM13.79 4.98c.71-.86 1.19-2.06 1.06-3.25-1.02.04-2.26.68-3 1.54-.66.76-1.23 1.98-1.08 3.15 1.14.09 2.3-.58 3.02-1.44z"/></svg>
+              <span><small>Download on the</small>App Store</span>
+            </a>
+          </div>
+        </div>
+        <div class="chapter__phones" aria-label="ByeByeBytes screenshots">
+          <figure class="phone phone--left"><img src="../assets/byebyebytes/home.jpg" alt="The home screen: storage saved at the top, then Screenshots, Recent Photos, Photos by Day, Daily Memories and Weekly Purge" width="660" height="1434"></figure>
+          <figure class="phone phone--center"><img src="../assets/byebyebytes/swipe.jpg" alt="Swiping through recent photos, one waterfall photo at a time, with undo, delete and keep buttons" width="660" height="1434"></figure>
+          <figure class="phone phone--right"><img src="../assets/byebyebytes/review.jpg" alt="Confirming the deletion of three selected photos, which will free up 3.6 MB" width="660" height="1434"></figure>
+        </div>
+      </article>
+
+      <section id="features" class="app-section" aria-labelledby="features-title">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">What it does</p>
+            <h2 id="features-title">Room for new memories</h2>
+          </div>
+          <p class="section-head__text">Thousands of photos are too many to sort in one go. ByeByeBytes breaks the job into small sessions you can finish over a coffee.</p>
+        </div>
+        <ul class="features">
+          <li class="feature">
+            <h3>Swipe to sort</h3>
+            <p>One photo at a time: swipe left to delete, right to keep. Changed your mind? Undo the last swipe.</p>
+          </li>
+          <li class="feature">
+            <h3>Pick a pile</h3>
+            <p>Screenshots, recent photos, a random batch, a single day, or the photos you took on this day last year.</p>
+          </li>
+          <li class="feature">
+            <h3>Similar photos</h3>
+            <p>Finds bursts and near-duplicates on your iPhone, so you can keep the best shot and let the rest go.</p>
+          </li>
+          <li class="feature">
+            <h3>Nothing lost by accident</h3>
+            <p>You review every photo before it is deleted, and deleted photos go to Recently Deleted in Photos, where you can recover them for 30 days.</p>
+          </li>
+          <li class="feature">
+            <h3>A weekly purge</h3>
+            <p>Once a week, go through last week’s photos. An optional reminder on the day and at the time you choose.</p>
+          </li>
+          <li class="feature">
+            <h3>See what you saved</h3>
+            <p>Each session shows the space you freed, and the home screen keeps the total. Photos you already sorted do not come back.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="privacy" class="app-section policy" aria-labelledby="privacy-title">
+        <aside class="policy__summary">
+          <p class="eyebrow">Privacy policy</p>
+          <h2 id="privacy-title">Your photos stay on your iPhone</h2>
+          <p>We do not collect any data in ByeByeBytes. The app works entirely on your device and makes no internet connections of its own.</p>
+          <ul>
+            <li>No uploads, no servers</li>
+            <li>No account</li>
+            <li>No analytics or tracking</li>
+            <li>No ads, no third-party code</li>
+          </ul>
+          <p class="policy__updated">Last updated 16 November 2026</p>
+        </aside>
+
+        <div class="policy__body">
+          <h3>Who we are</h3>
+          <p>ByeByeBytes is made by Kogasa Studio, an independent app studio in Switzerland. This policy explains what happens to your information when you use ByeByeBytes. If you have a question, write to us at <a href="mailto:hello@kogasastudio.com">hello@kogasastudio.com</a>.</p>
+
+          <h3>Access to your photos</h3>
+          <p>ByeByeBytes asks for access to your photo library so it can show you your photos and delete the ones you choose. Your photos are read on your iPhone and <strong>never leave it</strong>: they are not uploaded, copied to a server or seen by us. Finding similar photos also happens entirely on your device.</p>
+          <p>Photos are deleted only after you confirm. They go to the Recently Deleted album of the Photos app, as if you had deleted them there. If you use iCloud Photos, Apple syncs the deletion to your other devices, just as it does for deletions in Photos.</p>
+          <p>You can change or withdraw photo access at any time in Settings › Privacy &amp; Security › Photos.</p>
+
+          <h3>What ByeByeBytes stores</h3>
+          <p>To pick up where you left off, the app keeps a little information on your iPhone:</p>
+          <ul>
+            <li>which photos you have already sorted (internal photo identifiers, not the photos themselves)</li>
+            <li>the progress of your sessions and the total space you freed</li>
+            <li>your settings, such as the appearance and the weekly reminder</li>
+          </ul>
+          <p>This information stays on your iPhone. It is not synced to iCloud and never sent to us. Deleting the app deletes it.</p>
+
+          <h3>Reminders</h3>
+          <p>The weekly reminder is optional. It is scheduled on your iPhone by iOS; no server of ours is involved.</p>
+
+          <h3>What we do not do</h3>
+          <ul>
+            <li>We do not ask you to create an account.</li>
+            <li>We do not use analytics, tracking, advertising or crash reporting services, and ByeByeBytes includes no third-party code that does.</li>
+            <li>We do not sell, rent or share any information about you.</li>
+          </ul>
+          <p>If you have chosen to share analytics with app developers in your device settings, Apple may give us anonymous, aggregated statistics such as the number of downloads or crashes. These never identify you.</p>
+
+          <h3>Writing to us</h3>
+          <p>If you contact us from the app, your Mail app opens a message for you to send. When you send it, we receive your email address and whatever you write. We use it only to answer you and delete it when it is no longer needed.</p>
+
+          <h3>Children</h3>
+          <p>ByeByeBytes collects no personal data from anyone, including children.</p>
+
+          <h3>Your rights</h3>
+          <p>Under the Swiss Federal Act on Data Protection and the EU General Data Protection Regulation, you have the right to know what personal data is held about you and to have it corrected or deleted. Because we do not hold any data about you from ByeByeBytes, there is nothing for us to hand over or delete. You are welcome to contact us with any question.</p>
+
+          <h3>Changes</h3>
+          <p>If ByeByeBytes ever changes how it handles your data, we will update this page and the date at the top before the change reaches the app.</p>
+
+          <h3 id="terms">Terms of use</h3>
+          <p>ByeByeBytes is provided under Apple’s <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">standard licence agreement for apps</a> (the Licensed Application End User License Agreement).</p>
+        </div>
+      </section>
+    </main>
+
+    <footer id="contact" class="footer">
+      <div class="footer__contact">
+        <span class="seal seal--md seal--tilt" aria-hidden="true">小傘</span>
+        <div>
+          <p class="eyebrow">Questions or ideas for ByeByeBytes?</p>
+          <p class="email"><span id="email">hello@kogasastudio.com</span> <button class="copy" type="button" data-copy="#email">Copy</button></p>
+        </div>
+      </div>
+      <p class="footer__meta"><a href="../">小傘 · Kogasa Studio</a> · Switzerland · © 2026</p>
+    </footer>
+  </div>
+</body>
+</html>
