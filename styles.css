@@ -395,6 +395,7 @@ a.store-badge { opacity: 1; cursor: pointer; text-decoration: none; transition: 
 a.store-badge:hover { color: var(--paper); background: var(--accent, var(--seal)); }
 .chapter__link { font-weight: 500; text-decoration: none; }
 .chapter__link:hover { text-decoration: underline; }
+.chapter__note { margin: 22px 0 0; font-size: 12px; line-height: 1.6; color: var(--muted); max-width: 56ch; }
 
 .chapter__phones {
   position: relative;
@@ -544,11 +545,14 @@ a.store-badge:hover { color: var(--paper); background: var(--accent, var(--seal)
   border: 1px solid #D3D0C6; border-radius: 4px;
   box-shadow: 0 1px 0 #CFCCC2, 0 30px 60px -36px rgba(27, 27, 26, .45);
 }
-.policy__summary h2 { margin: 10px 0 14px; font-weight: 900; font-size: clamp(30px, 3.2vw, 40px); line-height: 1.15; }
+.policy__summary h1, .policy__summary h2 { margin: 10px 0 14px; font-weight: 900; font-size: clamp(30px, 3.2vw, 40px); line-height: 1.15; }
 .policy__summary > p { margin: 0 0 18px; font-size: 18px; color: var(--ink-2); }
 .policy__summary ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .policy__summary li { position: relative; padding-left: 26px; color: var(--ink-3); }
 .policy__summary li::before { content: "✓"; position: absolute; left: 2px; color: var(--accent); font-weight: 700; }
+.legal-address { margin: 0 0 14px; font-style: normal; font-size: 18px; color: var(--ink-2); }
+.policy__summary .legal-contact { margin: 0; font-size: 18px; }
+.policy__summary .legal-contact a { color: var(--accent); }
 .policy__summary .policy__updated { margin: 18px 0 0; font-size: 14px; color: var(--muted); }
 .policy__body { max-width: 66ch; }
 .policy__body h3 { margin: 40px 0 10px; font-weight: 700; font-size: 22px; line-height: 1.35; }
