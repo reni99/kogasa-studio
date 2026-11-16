@@ -19,7 +19,8 @@ Then open http://localhost:8000. Opening `index.html` directly also works.
 - `landscape-gl.js` – the header's ink washes and mist as WebGL shaders, fast enough to repaint on every frame of a resize (the canvas painting in `landscape.js` is the fallback)
 - `colour.js` – the colour painting behind the stamp book: watercolour blooms, plum branch, gold leaf
 - `main.js` – grey-to-colour fade, stamps pressing in, copy button, and the scroll fallback for browsers without scroll-driven animations
-- `assets/` – FoilFold icon, favicon and the fonts
+- `habtap/`, `byebyebytes/` – one page per app: its stamp-book chapter, what it does, and its privacy policy (`#privacy`, the URL for App Store Connect)
+- `assets/` – app icons, screenshots (`assets/<app>/`), favicon and the fonts
 - `tools/subset-fonts.sh` – rebuilds `assets/fonts/`
 
 The paintings are seeded: change `SEED` in `landscape.js` or `colour.js` to repaint with a
@@ -33,7 +34,7 @@ for three of them took about fifty requests and a megabyte before the text could
 these carry the Latin alphabet and only the Japanese characters the page writes, and come
 to roughly 230 KB in total.
 
-**Write a Japanese character the page has not used before and it will fall back to the
+**Write a Japanese character the pages have not used before and it will fall back to the
 system serif until the fonts are rebuilt:**
 
 ```sh
@@ -55,3 +56,6 @@ Copy FoilFold's `<article class="chapter chapter--app">` in the stamp book and c
 - the screenshots in `assets/<app>/`
 
 Move the blank "Not yet" chapter to the end and renumber it.
+
+For a shipped app, the badge becomes a link (`<a class="store-badge" href=…>`). Give it its own
+page by copying `habtap/` and changing the chapter, the features and the privacy policy.
